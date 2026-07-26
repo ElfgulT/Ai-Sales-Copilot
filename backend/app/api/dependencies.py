@@ -64,6 +64,20 @@ def get_web_scraper() -> WebScraper:
     return MultiPageCrawler(hybrid, max_subpages=4)
 
 
+from app.infrastructure.enrichment.apollo_service import ApolloEnrichmentService
+from app.infrastructure.rag.vector_store import SimpleVectorStore
+
+
+@lru_cache
+def get_vector_store() -> SimpleVectorStore:
+    return SimpleVectorStore()
+
+
+@lru_cache
+def get_enrichment_service() -> ApolloEnrichmentService:
+    return ApolloEnrichmentService()
+
+
 @lru_cache
 def get_analysis_service() -> AnalysisService:
     """Aktif `AnalysisService` uygulamasını (tekil) döndürür.
@@ -107,6 +121,8 @@ def get_analysis_service() -> AnalysisService:
         RuleBasedScoringEngine(),
         outreach_writer,
         robots_checker=robots_checker,
+        vector_store=get_vector_store(),
+        enrichment_service=get_enrichment_service(),
     )
 
 

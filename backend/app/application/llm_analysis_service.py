@@ -61,14 +61,19 @@ class LLMAnalysisService(AnalysisService):
         content = await self._scraper.scrape(url)
         company_name = derive_company_name(content, url)
 
-        # RAG Vektör İndeksleme
+        # RAG Vektör İndeksleme & Sorgulama (Retrieval)
+        rag_context: str | None = None
         if self._vector_store is not None and content.text:
             await self._vector_store.add_documents([content.text], metadatas=[{"url": url, "name": company_name}])
+            rag_chunks = await self._vector_store.query("acı noktaları müşteri zorluk fırsat teknoloji büyüme", top_k=3)
+            if rag_chunks:
+                rag_context = "\n---\n".join(rag_chunks)
+                logger.info("RAG Sorgulaması (%d parça çekildi) tamamlandı.", len(rag_chunks))
 
         # B2B Şirket Veri Zenginleştirme (Apollo.io)
         if self._enrichment_service is not None:
             enrichment_data = await self._enrichment_service.enrich_company(url)
-            logger.info("Apollo zenginleştirme tamam: %s", enrichment_data.get("enrichment_source"))
+            logger.info("Apollo zenginleştirme tamam: %s (Sektör: %s)", enrichment_data.get("enrichment_source"), enrichment_data.get("industry", "N/A"))
 
         insights = await self._analyzer.analyze(content)
         lead_score = self._scoring_engine.score(insights.signals)

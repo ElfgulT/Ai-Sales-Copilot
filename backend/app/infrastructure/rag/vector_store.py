@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
-import re
 from typing import Sequence
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 from app.domain.interfaces import VectorStore
 
@@ -12,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 class SimpleVectorStore(VectorStore):
-    """Hafif, sıfır dış bağımlılık gerektiren TF-IDF & Cosine Similarity tabanlı yerel Vektör Veritabanı.
+    """TF-IDF & Cosine Similarity tabanlı yerel Vektör Veritabanı.
 
-    Metin parçalarını (chunks) indeksler ve anlamsal/kelime benzerliğine göre
+    Metin parçalarını (chunks) indeksler ve anlamsal/kelime TF-IDF benzerliğine göre
     en alakalı parçaları RAG sorgusuna döndürür.
     """
 
@@ -29,7 +31,6 @@ class SimpleVectorStore(VectorStore):
         if not text or len(text) <= self._chunk_size:
             return [text] if text else []
 
-        # Paragraf veya cümle sınırlarına göre bölmeye çalış
         paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
         chunks = []
         current = ""
@@ -55,31 +56,28 @@ class SimpleVectorStore(VectorStore):
                     self._documents.append(chunk)
                     self._metadatas.append(meta)
 
-        logger.info("Vektör veritabanına %d yeni doküman parçası (chunk) indekslendi.", len(self._documents))
+        logger.info("Vektör veritabanına %d doküman parçası (chunk) TF-IDF ile indekslendi.", len(self._documents))
 
     async def query(self, query_text: str, top_k: int = 3) -> list[str]:
         if not self._documents or not query_text.strip():
             return []
 
-        # Scikit-learn veya kelime çakışması / Jaccard & TF-IDF benzerliği ile puanlama
-        query_words = set(re.findall(r"\w+", query_text.lower()))
+        try:
+            vectorizer = TfidfVectorizer().fit(self._documents + [query_text])
+            doc_vectors = vectorizer.transform(self._documents)
+            query_vector = vectorizer.transform([query_text])
 
-        scored_docs: list[tuple[float, str]] = []
-        for doc in self._documents:
-            doc_words = set(re.findall(r"\w+", doc.lower()))
-            if not doc_words:
-                continue
-            intersection = query_words.intersection(doc_words)
-            union = query_words.union(doc_words)
-            score = len(intersection) / len(union) if union else 0.0
-            scored_docs.append((score, doc))
+            similarities = cosine_similarity(query_vector, doc_vectors).flatten()
 
-        # En yüksek puanlıları sırala
-        scored_docs.sort(key=lambda x: x[0], reverse=True)
-        results = [doc for score, doc in scored_docs[:top_k] if score > 0]
+            # Skorlara göre sırala
+            indexed_scores = list(enumerate(similarities))
+            indexed_scores.sort(key=lambda x: x[1], reverse=True)
 
-        # Benzerlik 0 çıksa bile ilk k parçayı fallback olarak döndür
-        if not results and self._documents:
-            results = self._documents[:top_k]
+            results = [self._documents[idx] for idx, score in indexed_scores[:top_k] if score > 0.0]
+            if not results and self._documents:
+                results = self._documents[:top_k]
 
-        return results
+            return results
+        except Exception as exc:
+            logger.warning("Vektör aramada hata: %s, fallback uygulanıyor.", exc)
+            return self._documents[:top_k]

@@ -14,6 +14,9 @@ playwright>=1.47,<2.0      # dinamik (JS) scraping. Tarayıcı: `playwright inst
 anthropic>=0.40           # Claude API resmi SDK'sı (AsyncAnthropic)
 google-genai>=1.0         # Gemini API (Google AI Studio, ücretsiz kota)
 
+# --- RAG & Vektör Arama (Sprint 3) ---
+scikit-learn>=1.5          # TF-IDF & Cosine Similarity yerel vektör indeksleme
+
 # --- Auth & Veritabanı ---
 sqlalchemy>=2.0,<3.0      # async ORM (SQLite için aiosqlite sürücüsüyle)
 aiosqlite>=0.20,<1.0      # SQLAlchemy async SQLite sürücüsü

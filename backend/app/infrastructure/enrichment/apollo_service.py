@@ -35,10 +35,13 @@ class ApolloEnrichmentService(EnrichmentService):
             }
 
         try:
+            # Güvenlik: API anahtarı URL sorgusu yerine HTTP başlığında iletilir
+            headers = {"Cache-Control": "no-cache", "x-api-key": self._api_key}
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(
                     "https://api.apollo.io/v1/organizations/enrich",
-                    params={"domain": cleaned_domain, "api_key": self._api_key},
+                    params={"domain": cleaned_domain},
+                    headers=headers,
                 )
                 if resp.status_code == 200:
                     data = resp.json()
