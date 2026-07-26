@@ -105,3 +105,27 @@ class ScoringEngine(ABC):
     @abstractmethod
     def score(self, signals: CompanySignals) -> LeadScore:
         raise NotImplementedError
+
+
+class VectorStore(ABC):
+    """RAG (Retrieval-Augmented Generation) vektör arama sözleşmesi."""
+
+    @abstractmethod
+    async def add_documents(self, documents: list[str], metadatas: list[dict] | None = None) -> None:
+        """Dokümanları vektörleştirip indekse ekler."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def query(self, query_text: str, top_k: int = 3) -> list[str]:
+        """Sorguya en benzer doküman parçalarını (chunk) döndürür."""
+        raise NotImplementedError
+
+
+class EnrichmentService(ABC):
+    """B2B şirket veri zenginleştirme servisi sözleşmesi (Apollo.io vb.)."""
+
+    @abstractmethod
+    async def enrich_company(self, domain: str) -> dict:
+        """Şirket domain adından ek B2B firma verisi çeker."""
+        raise NotImplementedError
+

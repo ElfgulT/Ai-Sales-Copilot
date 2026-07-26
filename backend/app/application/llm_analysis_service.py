@@ -23,8 +23,10 @@ from app.core.exceptions import RobotsDisallowedError
 from app.domain.interfaces import (
     AnalysisService,
     CompanyInsightAnalyzer,
+    EnrichmentService,
     OutreachWriter,
     ScoringEngine,
+    VectorStore,
     WebScraper,
 )
 from app.domain.models import AnalysisMeta, CompanyAnalysis
@@ -41,12 +43,16 @@ class LLMAnalysisService(AnalysisService):
         scoring_engine: ScoringEngine,
         outreach_writer: OutreachWriter,
         robots_checker: RobotsChecker | None = None,
+        vector_store: VectorStore | None = None,
+        enrichment_service: EnrichmentService | None = None,
     ):
         self._scraper = scraper
         self._analyzer = analyzer
         self._scoring_engine = scoring_engine
         self._outreach_writer = outreach_writer
         self._robots_checker = robots_checker
+        self._vector_store = vector_store
+        self._enrichment_service = enrichment_service
 
     async def analyze(self, url: str) -> CompanyAnalysis:
         if self._robots_checker is not None and not await self._robots_checker.is_allowed(url):
@@ -54,6 +60,15 @@ class LLMAnalysisService(AnalysisService):
 
         content = await self._scraper.scrape(url)
         company_name = derive_company_name(content, url)
+
+        # RAG Vektör İndeksleme
+        if self._vector_store is not None and content.text:
+            await self._vector_store.add_documents([content.text], metadatas=[{"url": url, "name": company_name}])
+
+        # B2B Şirket Veri Zenginleştirme (Apollo.io)
+        if self._enrichment_service is not None:
+            enrichment_data = await self._enrichment_service.enrich_company(url)
+            logger.info("Apollo zenginleştirme tamam: %s", enrichment_data.get("enrichment_source"))
 
         insights = await self._analyzer.analyze(content)
         lead_score = self._scoring_engine.score(insights.signals)
