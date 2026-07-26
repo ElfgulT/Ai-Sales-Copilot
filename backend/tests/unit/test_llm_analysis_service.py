@@ -67,3 +67,40 @@ async def test_robots_disallowed_raises_before_work() -> None:
         await service.analyze("https://example.com")
 
     assert analyzer.called is False  # robots reddedince LLM çağrılmaz
+
+
+@pytest.mark.asyncio
+async def test_vector_store_per_company_isolation() -> None:
+    """Ardışık şirket analizlerinde RAG bağlamlarının sızmadığını (izole olduğunu) doğrular."""
+    from app.infrastructure.rag.vector_store import SimpleVectorStore
+
+    class _CaptureAnalyzer(FakeAnalyzer):
+        def __init__(self):
+            super().__init__()
+            self.last_rag_context: str | None = None
+
+        async def analyze(self, content, rag_context=None, enrichment_data=None):
+            self.last_rag_context = rag_context
+            return self._insights
+
+    analyzer = _CaptureAnalyzer()
+    shared_store = SimpleVectorStore()
+    service = LLMAnalysisService(
+        FakeScraper(make_scraped_content(text="ABC Şirketi Özel Gizli Metni")),
+        analyzer,
+        RuleBasedScoringEngine(),
+        FakeOutreachWriter(),
+        vector_store=shared_store,
+    )
+
+    # 1. Şirket analizi
+    await service.analyze("https://companyA.com")
+    assert analyzer.last_rag_context is not None
+    assert "ABC Şirketi" in analyzer.last_rag_context
+
+    # 2. Şirket analizi (farklı metin)
+    service._scraper = FakeScraper(make_scraped_content(text="XYZ Şirketi Tekstil İçeriği"))
+    await service.analyze("https://companyB.com")
+    assert analyzer.last_rag_context is not None
+    assert "XYZ Şirketi" in analyzer.last_rag_context
+    assert "ABC Şirketi" not in analyzer.last_rag_context  # ABC Şirketi verisi XYZ'ye sızmamalı!

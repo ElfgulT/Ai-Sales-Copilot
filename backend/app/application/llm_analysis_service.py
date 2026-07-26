@@ -62,9 +62,10 @@ class LLMAnalysisService(AnalysisService):
         content = await self._scraper.scrape(url)
         company_name = derive_company_name(content, url)
 
-        # RAG Vektör İndeksleme & Sorgulama (Retrieval) - Şirket Bazlı İzole İndeks
+        # RAG Vektör İndeksleme & Sorgulama (Retrieval) - Şirket Bazlı Tam İzole İndeks
         rag_context: str | None = None
-        vector_store = self._vector_store or SimpleVectorStore()
+        # Her analiz çağrısı için sıfır, izole bir Vektör Deposu oluşturulur (şirketler arası veri sızması imkânsızdır).
+        vector_store = self._vector_store.__class__() if self._vector_store is not None else SimpleVectorStore()
         if content.text:
             await vector_store.add_documents([content.text], metadatas=[{"url": url, "name": company_name}])
             rag_chunks = await vector_store.query("acı noktaları müşteri zorluk fırsat teknoloji büyüme", top_k=3)

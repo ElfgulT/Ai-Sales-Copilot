@@ -68,8 +68,8 @@ from app.infrastructure.enrichment.apollo_service import ApolloEnrichmentService
 from app.infrastructure.rag.vector_store import SimpleVectorStore
 
 
-@lru_cache
 def get_vector_store() -> SimpleVectorStore:
+    """Şirket bazlı izole RAG vektör deposu fabrikası (her analiz isteğinde yeni örnek oluşturur)."""
     return SimpleVectorStore()
 
 
