@@ -56,7 +56,7 @@ class GeminiLLMProvider(LLMProvider):
             response_mime_type="application/json" if json_mode else "text/plain",
             # Gemini 2.5 Flash: düşünmeyi kapat -> tüm token bütçesi çıktıya kalır,
             # JSON/e-posta yarıda kesilmez.
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
+            thinking_config=types.ThinkingConfig(include_thoughts=False),
         )
         try:
             return await self._client.aio.models.generate_content(
