@@ -14,7 +14,14 @@ env/
 # --- Ortam / sırlar ---
 .env
 .envv
+*.env
 *.local
+
+# --- Veritabanı ---
+*.db
+*.sqlite
+*.sqlite3
+backend/data/*.db
 
 # --- İşletim sistemi / editör ---
 .DS_Store
