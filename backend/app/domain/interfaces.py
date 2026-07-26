@@ -78,7 +78,12 @@ class CompanyInsightAnalyzer(ABC):
     """Çekilen içerikten `CompanyInsights` üreten analizci sözleşmesi."""
 
     @abstractmethod
-    async def analyze(self, content: ScrapedContent) -> CompanyInsights:
+    async def analyze(
+        self,
+        content: ScrapedContent,
+        rag_context: str | None = None,
+        enrichment_data: dict | None = None,
+    ) -> CompanyInsights:
         raise NotImplementedError
 
 

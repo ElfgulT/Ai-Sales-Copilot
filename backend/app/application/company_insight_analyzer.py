@@ -96,8 +96,13 @@ class LLMCompanyInsightAnalyzer(CompanyInsightAnalyzer):
         self._provider = provider
         self._max_input_chars = max_input_chars
 
-    async def analyze(self, content: ScrapedContent) -> CompanyInsights:
-        prompt = self._build_prompt(content)
+    async def analyze(
+        self,
+        content: ScrapedContent,
+        rag_context: str | None = None,
+        enrichment_data: dict | None = None,
+    ) -> CompanyInsights:
+        prompt = self._build_prompt(content, rag_context=rag_context, enrichment_data=enrichment_data)
         data = await self._provider.extract_structured(
             system=_SYSTEM_PROMPT,
             prompt=prompt,
@@ -105,30 +110,55 @@ class LLMCompanyInsightAnalyzer(CompanyInsightAnalyzer):
             tool_name=_TOOL_NAME,
             tool_description=_TOOL_DESCRIPTION,
         )
-        return self._to_insights(data)
+        return self._to_insights(data, enrichment_data=enrichment_data)
 
-    def _build_prompt(self, content: ScrapedContent) -> str:
+    def _build_prompt(
+        self,
+        content: ScrapedContent,
+        rag_context: str | None = None,
+        enrichment_data: dict | None = None,
+    ) -> str:
         text = content.text[: self._max_input_chars]
         headings = " | ".join(content.headings[:15])
-        return (
-            f"ŞİRKET URL: {content.url}\n"
-            f"BAŞLIK: {content.title or '-'}\n"
-            f"META AÇIKLAMA: {content.meta_description or '-'}\n"
-            f"BÖLÜM BAŞLIKLARI: {headings or '-'}\n\n"
-            f"SAYFA METNİ:\n{text}"
-        )
+
+        prompt_parts = [
+            f"ŞİRKET URL: {content.url}",
+            f"BAŞLIK: {content.title or '-'}",
+            f"META AÇIKLAMA: {content.meta_description or '-'}",
+            f"BÖLÜM BAŞLIKLARI: {headings or '-'}",
+        ]
+
+        if rag_context:
+            prompt_parts.append(f"\n--- RAG ODAKLI ÇEKİLEN İÇERİK PARÇALARI ---\n{rag_context}")
+
+        if enrichment_data:
+            enrich_summary = ", ".join(f"{k}: {v}" for k, v in enrichment_data.items() if v)
+            prompt_parts.append(f"\n--- APOLLO.IO B2B ŞİRKET ZENGİNLEŞTİRME VERİSİ ---\n{enrich_summary}")
+
+        prompt_parts.append(f"\nSAYFA METNİ:\n{text}")
+        return "\n".join(prompt_parts)
 
     @staticmethod
-    def _to_insights(data: dict) -> CompanyInsights:
+    def _to_insights(data: dict, enrichment_data: dict | None = None) -> CompanyInsights:
         """LLM sözlüğünü güvenli biçimde domain modeline çevirir (eksik alanlara dayanıklı)."""
         raw_signals = data.get("signals") or {}
+
+        # Apollo.io zenginleştirme verisini sinyallere entegre et
+        sector = _clean_str(raw_signals.get("sector"))
+        if not sector and enrichment_data and enrichment_data.get("industry"):
+            sector = str(enrichment_data["industry"])
+
+        techs = _clean_list(raw_signals.get("technologies"))
+        if enrichment_data and enrichment_data.get("technologies"):
+            techs = tuple(set(techs + tuple(enrichment_data["technologies"])))
+
         signals = CompanySignals(
-            sector=_clean_str(raw_signals.get("sector")),
+            sector=sector,
             employee_band=_clean_str(raw_signals.get("employee_band")),
             is_hiring=bool(raw_signals.get("is_hiring", False)),
             hiring_roles=_clean_list(raw_signals.get("hiring_roles")),
             growth_signals=_clean_list(raw_signals.get("growth_signals")),
-            technologies=_clean_list(raw_signals.get("technologies")),
+            technologies=techs,
         )
         return CompanyInsights(
             summary=(data.get("summary") or "").strip(),

@@ -89,7 +89,7 @@ class FakeAnalyzer(CompanyInsightAnalyzer):
         )
         self.called = False
 
-    async def analyze(self, content: ScrapedContent) -> CompanyInsights:
+    async def analyze(self, content: ScrapedContent, *args, **kwargs) -> CompanyInsights:
         self.called = True
         return self._insights
 

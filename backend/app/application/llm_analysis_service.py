@@ -30,6 +30,7 @@ from app.domain.interfaces import (
     WebScraper,
 )
 from app.domain.models import AnalysisMeta, CompanyAnalysis
+from app.infrastructure.rag.vector_store import SimpleVectorStore
 from app.infrastructure.scraping.robots import RobotsChecker
 
 logger = logging.getLogger(__name__)
@@ -61,21 +62,23 @@ class LLMAnalysisService(AnalysisService):
         content = await self._scraper.scrape(url)
         company_name = derive_company_name(content, url)
 
-        # RAG Vektör İndeksleme & Sorgulama (Retrieval)
+        # RAG Vektör İndeksleme & Sorgulama (Retrieval) - Şirket Bazlı İzole İndeks
         rag_context: str | None = None
-        if self._vector_store is not None and content.text:
-            await self._vector_store.add_documents([content.text], metadatas=[{"url": url, "name": company_name}])
-            rag_chunks = await self._vector_store.query("acı noktaları müşteri zorluk fırsat teknoloji büyüme", top_k=3)
+        vector_store = self._vector_store or SimpleVectorStore()
+        if content.text:
+            await vector_store.add_documents([content.text], metadatas=[{"url": url, "name": company_name}])
+            rag_chunks = await vector_store.query("acı noktaları müşteri zorluk fırsat teknoloji büyüme", top_k=3)
             if rag_chunks:
                 rag_context = "\n---\n".join(rag_chunks)
                 logger.info("RAG Sorgulaması (%d parça çekildi) tamamlandı.", len(rag_chunks))
 
         # B2B Şirket Veri Zenginleştirme (Apollo.io)
+        enrichment_data: dict | None = None
         if self._enrichment_service is not None:
             enrichment_data = await self._enrichment_service.enrich_company(url)
             logger.info("Apollo zenginleştirme tamam: %s (Sektör: %s)", enrichment_data.get("enrichment_source"), enrichment_data.get("industry", "N/A"))
 
-        insights = await self._analyzer.analyze(content)
+        insights = await self._analyzer.analyze(content, rag_context=rag_context, enrichment_data=enrichment_data)
         lead_score = self._scoring_engine.score(insights.signals)
 
         # E-posta ve pitch birbirinden bağımsız → eşzamanlı üret (daha hızlı).
