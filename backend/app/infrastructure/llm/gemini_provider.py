@@ -37,7 +37,7 @@ class GeminiLLMProvider(LLMProvider):
         api_key: str,
         *,
         model: str = "gemini-2.5-flash",
-        max_tokens: int = 2048,
+        max_tokens: int = 4096,
     ):
         import google.genai as genai
 

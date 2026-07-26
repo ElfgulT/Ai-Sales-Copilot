@@ -98,7 +98,10 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
 
     # --- Ortak LLM ayarları ---
-    llm_max_tokens: int = 2048
+    llm_max_tokens: int = Field(
+        default=4096,
+        validation_alias=AliasChoices("LLM_MAX_TOKENS", "COPILOT_LLM_MAX_TOKENS"),
+    )
     llm_timeout_seconds: float = 60.0
     # LLM'e gönderilen metin bu karakter sayısında kırpılır (context-stuffing /
     # RAG-lite; token maliyetini sınırlar). Tek sayfa için fazlasıyla yeterli.
