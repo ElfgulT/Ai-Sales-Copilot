@@ -1,3 +1,8 @@
+
+
+
+
+
 ## **Takım İsmi**
 
 **YZTA AI Innovators**
@@ -342,6 +347,15 @@ oluşturamaz**. Sonuç: projeyi sıfırdan klonlayan herkes açılışta
 testleri 401 dönmeye başladı. Çözüm: FastAPI'nin `dependency_overrides` mekanizmasıyla
 testlerde `get_current_user` bağımlılığı sahte bir kullanıcıyla değiştirildi —
 böylece testler kimlik doğrulamadan bağımsız kaldı.
+
+
+
+https://github.com/user-attachments/assets/ae94ad4b-f85d-4082-b43a-91f363bf55b5
+
+
+
+
+
 
 
 ### Ürünün Durumu ve Tanıtım Görselleri
