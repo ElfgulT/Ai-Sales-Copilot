@@ -132,8 +132,19 @@ class LLMCompanyInsightAnalyzer(CompanyInsightAnalyzer):
             prompt_parts.append(f"\n--- RAG ODAKLI ÇEKİLEN İÇERİK PARÇALARI ---\n{rag_context}")
 
         if enrichment_data:
-            enrich_summary = ", ".join(f"{k}: {v}" for k, v in enrichment_data.items() if v)
-            prompt_parts.append(f"\n--- APOLLO.IO B2B ŞİRKET ZENGİNLEŞTİRME VERİSİ ---\n{enrich_summary}")
+            # `domain` ve `enrichment_source` yalnızca iç kayıt tutma alanlarıdır;
+            # modele gönderilirse gürültü yaratır. Yalnızca gerçek şirket verisi
+            # kalırsa bloğu ekle — aksi halde hiç ekleme.
+            facts = {
+                k: v
+                for k, v in enrichment_data.items()
+                if v and k not in ("domain", "enrichment_source")
+            }
+            if facts:
+                enrich_summary = ", ".join(f"{k}: {v}" for k, v in facts.items())
+                prompt_parts.append(
+                    f"\n--- APOLLO.IO B2B ŞİRKET ZENGİNLEŞTİRME VERİSİ ---\n{enrich_summary}"
+                )
 
         prompt_parts.append(f"\nSAYFA METNİ:\n{text}")
         return "\n".join(prompt_parts)
@@ -150,7 +161,11 @@ class LLMCompanyInsightAnalyzer(CompanyInsightAnalyzer):
 
         techs = _clean_list(raw_signals.get("technologies"))
         if enrichment_data and enrichment_data.get("technologies"):
-            techs = tuple(set(techs + tuple(enrichment_data["technologies"])))
+            # Sırayı KORUYARAK tekilleştir. `set()` kullanılırsa sıra çalıştırmadan
+            # çalıştırmaya değişir; aynı sayfa iki kez analiz edildiğinde çıktı
+            # farklı görünür ve testler kararsızlaşır.
+            merged = list(techs) + [str(t) for t in enrichment_data["technologies"]]
+            techs = tuple(dict.fromkeys(t for t in merged if t))
 
         signals = CompanySignals(
             sector=sector,

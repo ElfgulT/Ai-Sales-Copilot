@@ -6,9 +6,14 @@ AI Studio API anahtarıyla çalışır.
 
 ÜRETİM NOTLARI (Gemini 2.5 Flash uyumluluğu):
 - Gemini 2.5 Flash bir "düşünen" (thinking) modeldir; düşünme token'ları
-  `max_output_tokens` bütçesinden harcanır. İçerik zenginleştiğinde JSON çıktısı
-  yarıda kesilebilir (MAX_TOKENS). Bu yüzden yapılandırılmış çıktıda düşünme
-  KAPATILIR (`thinking_budget=0`) → tüm bütçe gerçek çıktıya kalır.
+  `max_output_tokens` bütçesinden harcanır. İçerik zenginleştiğinde çıktı yarıda
+  kesilebilir (MAX_TOKENS).
+  `google-genai` 1.2.0'da `ThinkingConfig`'in tek alanı `include_thoughts` kaldı;
+  `thinking_budget` KALDIRILDI. DİKKAT: `include_thoughts=False` düşünmeyi
+  kapatmaz — yalnızca düşünceleri yanıttan gizler. Model yine düşünür ve token
+  bütçesini yine tüketir. Bu yüzden kesilmeye karşı tek korumamız token
+  limitlerini yeterince yüksek tutmaktır (bkz. `config.py`: llm_max_tokens,
+  llm_email_max_tokens, llm_pitch_max_tokens).
 - Yanıt metni birden çok yoldan güvenle çıkarılır: candidates -> content.parts
   -> part.text; olmazsa `response.text`.
 - JSON ayrıştırma toleranslıdır: düz JSON, ```json``` çitli, önünde/arkasında
@@ -27,6 +32,7 @@ from collections.abc import Iterator
 
 from app.core.exceptions import LLMError
 from app.domain.interfaces import LLMProvider
+from app.infrastructure.llm.notices import TRUNCATED_OUTPUT_NOTICE
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +60,8 @@ class GeminiLLMProvider(LLMProvider):
             system_instruction=system,
             max_output_tokens=max_tokens,
             response_mime_type="application/json" if json_mode else "text/plain",
-            # Gemini 2.5 Flash: düşünmeyi kapat -> tüm token bütçesi çıktıya kalır,
-            # JSON/e-posta yarıda kesilmez.
+            # Düşünceleri yanıttan gizler. Düşünmeyi KAPATMAZ (SDK 1.2.0'da böyle
+            # bir seçenek yok) — token bütçesi yine düşünmeyle paylaşılır.
             thinking_config=types.ThinkingConfig(include_thoughts=False),
         )
         try:
@@ -100,15 +106,64 @@ class GeminiLLMProvider(LLMProvider):
         text, finish_reason = self._extract_text(response)
         return self._parse_json(text, finish_reason)
 
+    # Kesilme durumunda bütçe bu katsayıyla bir kez büyütülüp yeniden denenir.
+    _RETRY_TOKEN_MULTIPLIER = 2
+    _MAX_TOKEN_CEILING = 16384
+
     async def generate_text(self, *, system: str, prompt: str, max_tokens: int) -> str:
-        response = await self._generate_raw(
-            system=system, contents=prompt, max_tokens=max_tokens, json_mode=False
+        """Serbest metin üretir; çıktı kesilirse bütçeyi büyütüp BİR KEZ yeniden dener.
+
+        NEDEN: Gemini 2.5 Flash'ın düşünme token'ları `max_output_tokens`
+        bütçesinden harcanır ve harcanan miktar çağrıdan çağrıya değişir. Sabit bir
+        limit bu yüzden güvenilir değil — 4096 token ile bile e-posta/pitch cümle
+        ortasında kesilebiliyor. Kesilmeyi `finish_reason` üzerinden tespit edip
+        daha geniş bir bütçeyle tekrar denemek, limiti sürekli yükseltmekten hem
+        daha güvenilir hem de daha ucuz (yalnızca gerektiğinde ödeme yapılır).
+        """
+        text, finish_reason = await self._generate_once(
+            system=system, prompt=prompt, max_tokens=max_tokens
         )
-        text, finish_reason = self._extract_text(response)
+
+        if self._is_truncated(finish_reason):
+            retry_tokens = min(
+                max_tokens * self._RETRY_TOKEN_MULTIPLIER, self._MAX_TOKEN_CEILING
+            )
+            if retry_tokens > max_tokens:
+                logger.warning(
+                    "Çıktı kesildi (MAX_TOKENS). Bütçe %d -> %d yapılıp yeniden deneniyor.",
+                    max_tokens,
+                    retry_tokens,
+                )
+                retry_text, retry_reason = await self._generate_once(
+                    system=system, prompt=prompt, max_tokens=retry_tokens
+                )
+                # Yeniden deneme de kesilebilir; yine de daha uzun olanı tercih et.
+                if retry_text and len(retry_text) >= len(text):
+                    text, finish_reason = retry_text, retry_reason
+
         if not text:
             logger.error("Gemini boş metin döndürdü (finish_reason=%s).", finish_reason)
             raise LLMError("Analiz servisi boş yanıt döndürdü.")
+
+        if self._is_truncated(finish_reason):
+            # Yeniden deneme de yetmedi: yarım metni sessizce sunmak yerine
+            # kesildiğini kullanıcıya söylüyoruz.
+            logger.warning("Çıktı yeniden denemeden sonra da kesik kaldı.")
+            return text.strip() + TRUNCATED_OUTPUT_NOTICE
+
         return text.strip()
+
+    async def _generate_once(
+        self, *, system: str, prompt: str, max_tokens: int
+    ) -> tuple[str, object | None]:
+        response = await self._generate_raw(
+            system=system, contents=prompt, max_tokens=max_tokens, json_mode=False
+        )
+        return self._extract_text(response)
+
+    @staticmethod
+    def _is_truncated(finish_reason: object | None) -> bool:
+        return finish_reason is not None and str(finish_reason).endswith("MAX_TOKENS")
 
     # --- Yanıt çıkarımı ve ayrıştırma ---
 

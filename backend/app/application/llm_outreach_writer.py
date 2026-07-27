@@ -81,8 +81,12 @@ class LLMOutreachWriter(OutreachWriter):
     def _email_system_prompt(self) -> str:
         banned = "\n".join(f"- {p}" for p in _BANNED_PHRASES)
         return (
-            f"Sen {self._seller.name} firmasında deneyimli bir satış temsilcisisin. "
-            f"Sattığın şey: {self._seller.offering}\n\n"
+            # DİKKAT: firma adını "Sen ..." kalıbının hemen ardına koymayın. Firma adı
+            # "AI ..." ile başladığında model "Sen AI" ifadesini marka adı sanıp
+            # metinlerde "Sen AI ile..." diye kullanıyordu. Ad, ayrı bir alanda verilir.
+            f"ROLÜN: Deneyimli bir satış temsilcisisin.\n"
+            f"ÇALIŞTIĞIN FİRMA: {self._seller.name}\n"
+            f"SATTIĞIN ŞEY: {self._seller.offering}\n\n"
             "Sana bir potansiyel müşteri (lead) hakkında bilgi verilecek. Görevin: "
             "gerçek bir insanın yazdığı gibi, KISA ve DOĞAL bir soğuk e-posta yazmak.\n\n"
             "KURALLAR:\n"
@@ -102,8 +106,11 @@ class LLMOutreachWriter(OutreachWriter):
 
     def _pitch_system_prompt(self) -> str:
         return (
-            f"Sen {self._seller.name} firmasında bir satış temsilcisisin. "
-            f"Sattığın şey: {self._seller.offering}\n\n"
+            # Bkz. `_email_system_prompt` içindeki not: firma adı "Sen ..." kalıbının
+            # ardına konmaz.
+            f"ROLÜN: Bir satış temsilcisisin.\n"
+            f"ÇALIŞTIĞIN FİRMA: {self._seller.name}\n"
+            f"SATTIĞIN ŞEY: {self._seller.offering}\n\n"
             "Bir potansiyel müşteriyle yapılacak görüşmeye hazırlanıyorsun. Görevin: "
             "bu şirkete özel, 4-5 maddelik KISA konuşma noktaları hazırlamak.\n\n"
             "KURALLAR:\n"

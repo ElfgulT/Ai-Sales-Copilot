@@ -12,7 +12,9 @@ playwright>=1.47,<2.0      # dinamik (JS) scraping. Tarayıcı: `playwright inst
 
 # --- LLM (Sprint 3-4) ---
 anthropic>=0.40           # Claude API resmi SDK'sı (AsyncAnthropic)
-google-genai>=1.0         # Gemini API (Google AI Studio, ücretsiz kota)
+# SÜRÜM SABİTLİ: 1.2.0'da ThinkingConfig.thinking_budget kaldırıldı ve kod kırıldı.
+# Yükseltmeden önce ThinkingConfig alanlarının değişip değişmediğini doğrulayın.
+google-genai>=1.2,<2.0    # Gemini API (Google AI Studio, ücretsiz kota)
 
 # --- RAG & Vektör Arama (Sprint 3) ---
 scikit-learn>=1.5          # TF-IDF & Cosine Similarity yerel vektör indeksleme

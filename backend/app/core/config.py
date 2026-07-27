@@ -13,8 +13,13 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Geliştirme kolaylığı için konulan yer tutucu JWT sırrı. Üretimde kullanılması
+# herkesin geçerli token üretebilmesi anlamına gelir; aşağıdaki doğrulayıcı
+# `environment=production` iken bu değerle açılışı engeller.
+_DEFAULT_JWT_SECRET = "change-me-in-production"
 
 
 class Settings(BaseSettings):
@@ -106,8 +111,13 @@ class Settings(BaseSettings):
     # LLM'e gönderilen metin bu karakter sayısında kırpılır (context-stuffing /
     # RAG-lite; token maliyetini sınırlar). Tek sayfa için fazlasıyla yeterli.
     llm_max_input_chars: int = 12000
-    llm_email_max_tokens: int = 700
-    llm_pitch_max_tokens: int = 700
+    # Gemini 2.5 Flash bir "düşünen" modeldir ve düşünme token'ları bu bütçeden
+    # harcanır (bkz. gemini_provider.py). SDK 1.2.0'da düşünmeyi kapatmanın bir yolu
+    # YOK, dolayısıyla tek korumamız bütçeyi geniş tutmak. Ölçüm: 700 token e-postayı
+    # da pitch'i de kesiyordu; 2048'de e-posta düzeldi ama pitch hâlâ kesiliyordu
+    # (düşünme ~1900 token yiyebiliyor). 4096, çıktının kendisine rahat pay bırakır.
+    llm_email_max_tokens: int = 4096
+    llm_pitch_max_tokens: int = 4096
 
     # --- Veritabanı ---
     database_url: str = Field(
@@ -115,9 +125,16 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DATABASE_URL", "COPILOT_DATABASE_URL"),
     )
 
+    # --- Apollo.io B2B zenginleştirme (opsiyonel) ---
+    # Anahtar yoksa zenginleştirme sessizce devre dışı kalır; analiz yine çalışır.
+    apollo_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("APOLLO_API_KEY", "COPILOT_APOLLO_API_KEY"),
+    )
+
     # --- JWT ---
     jwt_secret: str = Field(
-        default="change-me-in-production",
+        default=_DEFAULT_JWT_SECRET,
         validation_alias=AliasChoices("JWT_SECRET", "COPILOT_JWT_SECRET"),
     )
     jwt_algorithm: str = "HS256"
@@ -140,6 +157,25 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    @model_validator(mode="after")
+    def _reject_default_secret_in_production(self) -> "Settings":
+        """Üretimde varsayılan JWT sırrıyla açılmayı reddeder.
+
+        `docker-compose.yml` ortamı `production` olarak ayarlıyor ve `.env`
+        dosyasını opsiyonel tutuyor. Bu koruma olmadan, `.env` unutulduğunda
+        uygulama herkesin bildiği bir sırla ayağa kalkar ve isteyen kendine
+        geçerli bir oturum token'ı üretebilir. Hatayı açılışta ve yüksek sesle
+        vermek, sessizce güvensiz çalışmaktan iyidir.
+        """
+        if self.is_production and self.jwt_secret == _DEFAULT_JWT_SECRET:
+            raise ValueError(
+                "Üretim ortamında varsayılan JWT sırrı kullanılamaz. "
+                "COPILOT_JWT_SECRET ortam değişkenini ayarlayın. "
+                'Güçlü bir değer üretmek için: python -c "import secrets; '
+                'print(secrets.token_urlsafe(32))"'
+            )
+        return self
 
 
 @lru_cache

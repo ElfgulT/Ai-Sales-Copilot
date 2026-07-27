@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -16,9 +17,26 @@ _engine = None
 _session_factory = None
 
 
+def _ensure_sqlite_dir(database_url: str) -> None:
+    """SQLite dosyasının bulunacağı klasörü oluşturur (yoksa).
+
+    SQLite veritabanı dosyasını kendisi oluşturur ama KLASÖRÜ oluşturmaz. Veritabanı
+    dosyası sürüm kontrolünde tutulmadığı için taze bir klonda `data/` klasörü hiç
+    bulunmaz ve uygulama açılışta "unable to open database file" ile çöker. Burada
+    klasörü garanti altına alıyoruz ki `git clone` + `uvicorn` ek adım gerektirmesin.
+    """
+    if not database_url.startswith("sqlite"):
+        return  # PostgreSQL vb. için dosya sistemi hazırlığı gerekmez
+
+    path = database_url.split("///", 1)[-1]
+    if path and path != ":memory:":
+        Path(path).expanduser().parent.mkdir(parents=True, exist_ok=True)
+
+
 def _get_engine(database_url: str):
     global _engine, _session_factory
     if _engine is None:
+        _ensure_sqlite_dir(database_url)
         _engine = create_async_engine(database_url, echo=False)
         _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine

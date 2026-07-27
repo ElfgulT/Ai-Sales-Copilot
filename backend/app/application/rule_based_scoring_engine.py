@@ -12,10 +12,28 @@ eşikler) — böylece kuralları koda gömmek yerine ayarlanabilir kılarız.
 
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass, field
 
 from app.domain.interfaces import ScoringEngine
 from app.domain.models import CompanySignals, LeadScore, LeadTier, ScoreReason
+
+# Türkçe harfleri ASCII karşılıklarına indirger.
+# NEDEN: Python'un `str.lower()` metodu Türkçe'ye göre çalışmaz —
+#   "YAZILIM".lower()   -> "yazilim"   ("ı" yerine "i")
+#   "E-TİCARET".lower() -> "e-ti̇caret" (birleşik nokta karakteri kalır)
+# Bu yüzden sektörü BÜYÜK harfle yazılmış bir şirket, hedef sektör listesiyle
+# eşleşemiyor ve 25 puanı sessizce kaybediyordu. Karşılaştırmadan önce iki tarafı
+# da bu fonksiyonla normalleştiriyoruz.
+_TR_MAP = str.maketrans("ıİşŞğĞüÜöÖçÇ", "iissgguuoocc")
+
+
+def _normalize(text: str) -> str:
+    """Sektör metnini büyük/küçük harf ve Türkçe karakterden bağımsız hale getirir."""
+    folded = text.translate(_TR_MAP).casefold()
+    # Birleşik aksan işaretlerini (örn. "i̇") ayrıştırıp at.
+    decomposed = unicodedata.normalize("NFD", folded)
+    return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
 
 # Çalışan sayısı bandına verilen puanlar (B2B "sweet spot" orta ölçek).
 _DEFAULT_BAND_POINTS: dict[str, int] = {
@@ -52,10 +70,10 @@ class RuleBasedScoringEngine(ScoringEngine):
         cfg = self._config
         reasons: list[ScoreReason] = []
 
-        # Kural 1: Hedef sektör eşleşmesi
+        # Kural 1: Hedef sektör eşleşmesi (Türkçe karakterden bağımsız karşılaştırma)
         if signals.sector:
-            sector_lc = signals.sector.lower()
-            if any(target in sector_lc for target in cfg.target_sectors):
+            sector_norm = _normalize(signals.sector)
+            if any(_normalize(target) in sector_norm for target in cfg.target_sectors):
                 reasons.append(
                     ScoreReason(
                         rule="target_sector",

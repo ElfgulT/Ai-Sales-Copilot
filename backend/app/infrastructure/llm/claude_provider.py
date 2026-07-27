@@ -16,6 +16,7 @@ import logging
 
 from app.core.exceptions import LLMError
 from app.domain.interfaces import LLMProvider
+from app.infrastructure.llm.notices import TRUNCATED_OUTPUT_NOTICE
 
 logger = logging.getLogger(__name__)
 
@@ -86,4 +87,12 @@ class ClaudeLLMProvider(LLMProvider):
             system=system,
             messages=[{"role": "user", "content": prompt}],
         )
-        return "".join(b.text for b in message.content if b.type == "text").strip()
+        text = "".join(b.text for b in message.content if b.type == "text").strip()
+
+        # Gemini yolundaki davranışla aynı: metin uzunluk sınırına takıldıysa
+        # yarım çıktıyı sessizce sunmak yerine kullanıcıya bildir.
+        if getattr(message, "stop_reason", None) == "max_tokens":
+            logger.warning("Claude çıktısı token limitine takıldı (max_tokens).")
+            return text + TRUNCATED_OUTPUT_NOTICE
+
+        return text
