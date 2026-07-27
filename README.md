@@ -173,11 +173,11 @@ Backlog'umuz Trello üzerinde yönetilmektedir. Etiket renkleri:
 
 # Sprint 2
 
-- **Sprint Notları**: Sprint 2'nin temel hedefi, Sprint 1'de kurulan MVP altyapısını güçlendirmek ve ürün kalitesini artırmaktı. Planlanan tüm görevler tamamlanmış; bunların yanı sıra Sprint 3 ve Sprint 4 kapsamındaki bazı özellikler (MultiPageCrawler, Auth altyapısı, Docker) de bu sprint içinde erken teslim edilmiştir.
+- **Sprint Notları**: Sprint 2'nin temel hedefi, Sprint 1'de kurulan MVP altyapısını güçlendirmek ve ürün kalitesini artırmaktı. Planlanan tüm görevler tamamlanmış; bunların yanı sıra Sprint 3 kapsamındaki bazı özellikler (MultiPageCrawler, Auth altyapısı, Docker) de bu sprint içinde erken teslim edilmiştir.
 
 - **Sprint içinde tamamlanması tahmin edilen puan**: 90 Puan
 
-- **Puan tamamlama mantığı**: Proje boyunca tamamlanması gereken toplam 300 puanlık backlog bulunmaktadır. Sprint 2 için 90 puan hedeflenmiş ve bu hedef eksiksiz gerçekleştirilmiştir. Ekip, erken teslimlerle Sprint 3 ve Sprint 4 görevlerini de kısmen tamamlamıştır.
+- **Puan tamamlama mantığı**: Proje boyunca tamamlanması gereken toplam 300 puanlık backlog bulunmaktadır. Sprint 2 için 90 puan hedeflenmiş ve bu hedef eksiksiz gerçekleştirilmiştir. Ekip, erken teslimlerle Sprint 3  görevlerini de kısmen tamamlamıştır.
 
 - **Backlog düzeni ve Story seçimleri**: Sprint 2 backlog'u dört ana eksen etrafında şekillenmiştir: (1) Soğuk e-posta ve pitch kalitesinin artırılması (few-shot prompt ve doğal dil tonu), (2) Çoklu LLM desteği — Claude ve Gemini için sağlayıcıdan bağımsız fabrika yapısı (`factory.py`), (3) Web kazıma kararlılığı — SSRF koruması (`url_guard.py`), robots.txt uyumu (`robots.py`), istek sınırlama (`rate_limiter.py`) ve kullanıcı dostu hata mesajları, (4) Kapsamlı birim test altyapısı.
 
@@ -192,16 +192,7 @@ Backlog'umuz Trello üzerinde yönetilmektedir. Etiket renkleri:
 
   | Görev | Açıklama | Durum | Puan |
   | :--- | :--- | :---: | :---: |
-  | Çoklu LLM Fabrika Yapısı | Claude ve Gemini sağlayıcıları için provider-agnostic fabrika (OCP uyumlu `factory.py`) | ✅ Tamamlandı | 20 |
-  | SSRF Koruması | URL doğrulama ve iç ağ / bulut metadata adreslerini engelleme (`url_guard.py`) | ✅ Tamamlandı | 10 |
-  | robots.txt Uyumu | Hedef sitenin robots.txt kurallarına uygun scraping (`robots.py`) | ✅ Tamamlandı | 10 |
-  | İstek Sınırlama (Rate Limiter) | Aşırı istek önleme ve yeniden deneme mekanizması (`rate_limiter.py`) | ✅ Tamamlandı | 10 |
-  | Önbellekleme Katmanı | Tekrarlayan analizlerde cache kullanımı (`caching_analysis_service.py`) | ✅ Tamamlandı | 10 |
-  | Birim Testleri | `url_guard`, `rate_limiter`, `hybrid_scraper`, `llm_factory`, `llm_outreach_writer`, `domain_models` ve daha fazlası | ✅ Tamamlandı | 20 |
-  | Hata Mesajları | Kullanıcıya sade, anlaşılır scraping hata mesajları (`exceptions.py`) | ✅ Tamamlandı | 10 |
-  markdown
-  | Görev | Açıklama | Durum | Puan |
-  | :--- | :--- | :---: | :---: |
+  
   | JWT Kimlik Doğrulama | `/auth/register` ve `/auth/login` uç noktaları; bcrypt ile şifre hashleme; SQLAlchemy + SQLite kullanıcı tablosu. `/analyze` ve `/email` artık token gerektiriyor. Eklentiye giriş ekranı eklendi. | ✅ | 25 |
   | Çok Sayfalı Kazıma (MultiPageCrawler) | Ana sayfa yetersiz kaldığında "Hakkımızda", "Kariyer" gibi en fazla 4 alt sayfayı da tarayan katman. Birim testleriyle teslim edildi. | ✅ | 20 |
   | Docker ile Konteynerleştirme | Çok aşamalı `Dockerfile` ve `docker-compose.yml`; Playwright dahil, root olmayan kullanıcıyla çalışan imaj. | ✅ | 15 |
@@ -212,8 +203,8 @@ Backlog'umuz Trello üzerinde yönetilmektedir. Etiket renkleri:
   - Sprint 2 kapsamındaki tüm planlanan görevler (90 puan) başarıyla tamamlandı.
   - Çoklu LLM desteği hayata geçirildi; sistem artık hem Gemini hem de Claude API'yi desteklemekte, sağlayıcı değişikliği yalnızca `.env` konfigürasyonuyla yapılabilmektedir.
   - SSRF koruması, robots.txt uyumu ve rate limiter ile web kazıma katmanı production-ready hale getirildi.
-  - Kapsamlı birim test altyapısı kuruldu; tüm kritik bileşenler test kapsamına alındı.
-  - Sprint 3 ve Sprint 4 hedeflerinden bazıları erken teslim edildi (MultiPageCrawler, Auth, Docker) — bu durum ilerleyen sprintlerin yükünü önemli ölçüde hafifletti.
+  - Test altyapısı genişletildi; sprint sonunda 122 test geçiyordu.
+  - Sprint 3  hedeflerinden bazıları erken teslim edildi (MultiPageCrawler, Auth, Docker) — bu durum ilerleyen sprintlerin yükünü önemli ölçüde hafifletti.
   - Sprint Review katılımcıları: Hamza Kürşat Akburak, Elifgül Topcu, Meryem Durdağı, Ahmet Bilal Özgün.
 
 - **Sprint Retrospective**:
