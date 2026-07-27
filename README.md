@@ -271,7 +271,7 @@ Backlog'umuz Trello üzerinde yönetilmektedir. Etiket renkleri:
 - **Daily Scrum**: Daily Scrum toplantılarının WhatsApp üzerinden yapılmasına devam edilmiştir. Sprint 2 Daily Scrum toplantılarımız Imgur'da toplanmıştır: [Sprint 2 - Daily Scrum Chats](https://imgur.com/a/daily-scrum-chats-2-ktqlZ4b)
 
 - **Sprint board update**: Sprint board screenshot:
-![Backlog 2](readme_images/trello_s2.png)
+![Backlog 2](readme_images/trello_s2.jpeg)
 
 - **Ürünün Durumu**:
 
@@ -325,7 +325,7 @@ Backlog'umuz Trello üzerinde yönetilmektedir. Etiket renkleri:
   Sprint 3 toplantı kayıtlarımız: [Sprint 3 - Daily Scrum Chats](https://imgur.com/a/daily-scrum-chats-3-Gl2G33U)
 
 - **Sprint board update**:
-  ![Backlog 3](readme_images/trello_s3.png)
+  ![Backlog 3](readme_images/trello_s3.jpeg)
 
 - **Ürünün Durumu**:
 
