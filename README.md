@@ -43,8 +43,20 @@
 - Web Scraping (BeautifulSoup + Playwright) ile anlık veri çekimi
 - Gemini/Claude API ve TF-IDF tabanlı RAG (retrieval) ile bağlama duyarlı metin üretimi
 - Klişe yasak listesi ve few-shot prompt mühendisliği ile doğal dilde e-posta üretimi
-- Gelişmiş Lead Scoring (Potansiyel Müşteri Puanlama) altyapısı
 - FastAPI tabanlı asenkron backend mimarisi
+- Açıklanabilir Lead Scoring (XAI) — puanın hangi kurallardan geldiği kullanıcıya tek tek gösterilir
+- ### Açıklanabilir Puanlama
+
+Lead skoru bir yapay zekâ tahmini değildir; sabit ve denetlenebilir kurallarla
+hesaplanır. Bu yüzden kullanıcı yalnızca puanı değil, **puanın neden o olduğunu**
+da görür. Arayüzdeki "Bu puan nasıl hesaplanıyor?" paneli, puanlama kurallarının
+tamamını ve seviye eşiklerini açıkça listeler:
+
+<img width="441" height="352" alt="Lead-Score" src="https://github.com/user-attachments/assets/a62e5eaa-b02e-4159-9660-a70387e38950" />
+
+
+Skor 0–100 arasındadır: **0–39 Soğuk**, **40–69 Ilık**, **70–100 Sıcak**.
+  
 
 ## Hedef Kitle
 
@@ -56,6 +68,76 @@
 
 - Ürünümüzün "Demo" potansiyeli çok yüksek olduğundan, doğrudan hedef kitlemiz olan LinkedIn'deki satış liderlerine eklentinin yeteneklerini gösteren kısa videolarla ulaşmayı hedefliyoruz.
 - Başlangıçta kullanıcılara freemium (kısıtlı ücretsiz) model sunarak organik büyüme sağlanacak, sonrasında API ve token tüketimine bağlı olarak aylık abonelik (SaaS) sistemine geçilecektir.
+## Teknoloji ve Mimari
+
+| Katman | Teknoloji |
+| :--- | :--- |
+| Eklenti | Chrome Manifest V3, HTML/CSS/vanilla JavaScript |
+| Backend | Python 3.12, FastAPI, Pydantic v2, Uvicorn |
+| Kazıma | BeautifulSoup4 + httpx (statik), Playwright (dinamik) |
+| RAG / Retrieval | scikit-learn — TF-IDF vektörleme + kosinüs benzerliği |
+| LLM | Google Gemini (`google-genai`), Anthropic Claude (`anthropic`) |
+| Veritabanı | SQLAlchemy 2.0 (async) + SQLite (aiosqlite) |
+| Kimlik doğrulama | PyJWT (HS256) + bcrypt |
+| Test | pytest, pytest-asyncio (169 test) |
+| Dağıtım | Docker (multi-stage), docker-compose |
+
+### Analiz Akışı
+
+```mermaid
+flowchart LR
+    A[Chrome Eklentisi] -->|POST /analyze + JWT| B[FastAPI]
+    B --> C{robots.txt izin veriyor mu?}
+    C -->|hayir| X[Aciklayici hata mesaji]
+    C -->|evet| D[BeautifulSoup - statik kazima]
+    D -->|icerik zayifsa| E[Playwright - dinamik kazima]
+    D --> F[MultiPageCrawler - alt sayfalar]
+    E --> F
+    F --> G[TF-IDF Vektor Indeksi - RAG retrieval]
+    G --> H[LLM Saglayici - Gemini / Claude]
+    H --> I[Kural Tabanli Lead Scoring]
+    H --> J[Soguk E-posta + Pitch]
+    I --> K[Sonuc Paneli]
+    J --> K
+```
+
+### Katmanlı Yapı
+
+Proje **Clean Architecture** ile dört katmana ayrılmıştır. Bağımlılıklar daima
+içeriye, `domain` katmanına doğru akar:
+
+```
+backend/app/
+├── domain/           # models.py, interfaces.py — portlar (LLMProvider, WebScraper,
+│                     #   ScoringEngine, OutreachWriter, VectorStore, EnrichmentService)
+├── application/      # iş kuralları: analiz orkestrasyonu, skorlama, e-posta yazımı,
+│                     #   önbellekleme, kimlik doğrulama servisi
+├── infrastructure/   # dış dünya adaptörleri
+│   ├── scraping/     # beautifulsoup, playwright, hybrid, multi_page_crawler,
+│   │                 #   url_guard (SSRF), robots, rate_limiter, html_cleaner
+│   ├── llm/          # gemini_provider, claude_provider, demo_provider, factory
+│   ├── rag/          # vector_store — TF-IDF indeksleme ve retrieval
+│   ├── enrichment/   # apollo_service — B2B şirket veri zenginleştirme
+│   └── db/           # SQLAlchemy modelleri ve oturum yönetimi
+└── api/              # FastAPI route'ları, şemalar, bağımlılık enjeksiyonu
+```
+
+**Bu ayrımın pratik faydası:** Gemini'den Claude'a geçmek için `application` veya
+`domain` katmanında tek satır bile değişmez — yalnızca `.env` içindeki
+`LLM_PROVIDER` değeri değişir. Aynı şekilde önbellekleme, mevcut analiz servisini
+saran bir **Decorator** olarak eklendiği için iş kurallarına hiç dokunulmamıştır.
+
+### API Uç Noktaları
+
+| Metot | Yol | Açıklama | Token |
+| :--- | :--- | :--- | :---: |
+| `GET` | `/health` | Servis sağlık kontrolü | — |
+| `POST` | `/auth/register` | Yeni kullanıcı kaydı | — |
+| `POST` | `/auth/login` | Giriş, JWT döner | — |
+| `POST` | `/analyze` | Şirket analizi (özet, acı noktaları, skor, e-posta, pitch) | ✔ |
+| `POST` | `/email` | Yalnızca e-posta/pitch'i yeniden üretir | ✔ |
+
+---
 
 ## Kurulum ve Çalıştırma
 
@@ -110,24 +192,24 @@ docker compose up --build
 ## Product Backlog 
 markdown
 Backlog'umuz Trello üzerinde yönetilmektedir. Etiket renkleri:
-🟣 **Backend** · 🟠 **Frontend** · 🟢 **Data Science** · 🩷 **AI / YZ**
+🟣 **Backend** · 🟠 **Frontend** · 🟢 **Data Science** · 🟡  **AI / YZ**
 
-| # | Etiket | User Story | Sprint | Puan | Durum |
+| # | Etiket | User Story | Sprint | Puan | Durum |  
 | :-: | :---: | :--- | :---: | :-: | :---: |
 | 1 | 🟣 | Bir geliştirici olarak, katmanları ayrılmış bir backend iskeleti istiyorum ki yeni özellikler mimariyi bozmadan eklenebilsin. | 1 | 20 | ✅ |
 | 2 | 🟠 | Bir satış temsilcisi olarak, bulunduğum sayfayı tek tıkla analiz edebileceğim bir eklenti istiyorum. | 1 | 10 | ✅ |
 | 3 | 🟢 | Bir sistem olarak, hem statik hem JavaScript ile yüklenen siteleri okuyabilmeliyim. | 1 | 20 | ✅ |
 | 4 | 🟢 | Bir sistem olarak, iç ağ adreslerine istek atmamalı ve robots.txt kurallarına uymalıyım. | 1 | 15 | ✅ |
-| 5 | 🩷 | Bir kullanıcı olarak, şirketin özetini ve acı noktalarını görmek istiyorum. | 1 | 10 | ✅ |
+| 5 | 🟡 | Bir kullanıcı olarak, şirketin özetini ve acı noktalarını görmek istiyorum. | 1 | 10 | ✅ |
 | 6 | 🟢 | Bir kullanıcı olarak, lead skorunun **neden** o olduğunu görmek istiyorum. | 1 | 15 | ✅ |
-| 7 | 🩷 | Bir kullanıcı olarak, şablon kokmayan bir soğuk e-posta ve pitch istiyorum. | 1 | 10 | ✅ |
+| 7 | 🟡| Bir kullanıcı olarak, şablon kokmayan bir soğuk e-posta ve pitch istiyorum. | 1 | 10 | ✅ |
 | 8 | 🟣 | Bir kullanıcı olarak, hesabımla giriş yapıp analizlerimin bana özel olmasını istiyorum. | 2 | 25 | ✅ |
 | 9 | 🟢 | Bir sistem olarak, ana sayfa yetersizse alt sayfaları da tarayarak daha iyi analiz üretmeliyim. | 2 | 20 | ✅ |
 | 10 | 🟣 | Bir geliştirici olarak, projeyi tek komutla ayağa kaldırabilmek istiyorum. | 2 | 15 | ✅ |
 | 11 | 🟣 | Bir sistem olarak, aynı siteyi kısa süre içinde tekrar analiz ederken LLM maliyeti harcamamalıyım. | 2 | 10 | ✅ |
-| 12 | 🩷 | Bir sunucu olarak, internet veya API anahtarı olmadan da arayüzü gösterebilmeliyim. | 2 | 10 | ✅ |
-| 13 | 🩷 | Bir sistem olarak, içerik zengin sitelerde çıktının kesilmemesini sağlamalıyım. | 2 | 10 | ✅ |
-| 14 | 🩷 | Bir sistem olarak, uzun sayfalarda en ilgili bölümleri seçerek modele göndermeliyim (RAG). | 3 | 20 | ✅ |
+| 12 | 🟡 | Bir sunucu olarak, internet veya API anahtarı olmadan da arayüzü gösterebilmeliyim. | 2 | 10 | ✅ |
+| 13 | 🟡 | Bir sistem olarak, içerik zengin sitelerde çıktının kesilmemesini sağlamalıyım. | 2 | 10 | ✅ |
+| 14 | 🟡 | Bir sistem olarak, uzun sayfalarda en ilgili bölümleri seçerek modele göndermeliyim (RAG). | 3 | 20 | ✅ |
 | 15 | 🟢 | Bir sistem olarak, web sitesinden çıkaramadığım sektör bilgisini harici kaynaktan tamamlayabilmeliyim. | 3 | 10 | ✅ |
 | 16 | 🟣 | Bir geliştirici olarak, depoda ölü kod ve veritabanı dosyası olmamasını istiyorum. | 3 | 10 | ✅ |
 | 17 | 🟣 | Bir sistem olarak, üretimde zayıf sırlarla ve uydurulmuş verilerle çalışmamalıyım. | 3 | 15 | ✅ |
@@ -348,6 +430,20 @@ testleri 401 dönmeye başladı. Çözüm: FastAPI'nin `dependency_overrides` me
 testlerde `get_current_user` bağımlılığı sahte bir kullanıcıyla değiştirildi —
 böylece testler kimlik doğrulamadan bağımsız kaldı.
 
+### Ürünün Son Hali
+
+Aşağıdaki kayıt, Sprint 3 tamamlandıktan sonraki güncel arayüzü göstermektedir.
+Bu sprintte giderilen sorunların ürüne yansıması burada görülebilir:
+
+- **Lead skoru artık açıklanabilir**: çıplak bir sayı yerine seviye rozeti,
+  ilerleme çubuğu, eşik cetveli ve "bu puan nasıl hesaplanıyor?" paneli
+- **Yarıda kesilen metinler giderildi**: soğuk e-posta ve toplantı sunumu
+  eksiksiz üretiliyor (bkz. "Karşılaştığımız Zorluklar", madde 2)
+- **Zayıf içerik uyarısı**: analiz için yetersiz veri çekildiğinde kullanıcı
+  bilgilendiriliyor
+- **Demo modu bandı**: sahte çıktının gerçek analiz sanılması engellendi
+
+Kayıt gerçek Gemini API çağrılarıyla, `solgar.com.tr` üzerinde alınmıştır.
 
 
 https://github.com/user-attachments/assets/ae94ad4b-f85d-4082-b43a-91f363bf55b5
