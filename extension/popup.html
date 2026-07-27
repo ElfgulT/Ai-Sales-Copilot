@@ -8,10 +8,17 @@
   </head>
   <body>
     <header class="header">
-      <h1>AI Sales Copilot</h1>
-      <p id="current-url" class="current-url hidden">Sekme okunuyor…</p>
-      <button id="logout-btn" class="logout-btn hidden">Çıkış</button>
+      <div class="brand">
+        <span class="brand-mark">◆</span>
+        <div class="brand-text">
+          <h1>AI Sales Copilot</h1>
+          <p class="brand-sub">Satış öncesi şirket analizi</p>
+        </div>
+      </div>
+      <button id="logout-btn" class="logout-btn hidden" title="Oturumu kapat">Çıkış</button>
     </header>
+
+    <p id="current-url" class="current-url hidden">Sekme okunuyor…</p>
 
     <!-- Giriş ekranı — token yoksa gösterilir -->
     <section id="login-view">
@@ -31,9 +38,14 @@
     <main id="main-view" class="hidden">
       <button id="analyze-btn" class="primary-btn">Bu şirketi analiz et</button>
 
-      <!-- Yükleniyor durumu -->
+      <!-- Yükleniyor durumu — arka plandaki adımları sırayla gösterir -->
       <div id="loading" class="loading hidden">
-        <span class="spinner"></span> Analiz ediliyor…
+        <div class="loading-head">
+          <span class="spinner"></span>
+          <span id="loading-step">Site taranıyor…</span>
+        </div>
+        <div class="loading-track"><div id="loading-bar" class="loading-bar"></div></div>
+        <p class="loading-note">Bu işlem 20–30 saniye sürebilir.</p>
       </div>
 
       <!-- Hata durumu -->
@@ -41,18 +53,27 @@
 
       <!-- Sonuç paneli -->
       <section id="result" class="result hidden">
-        <div class="card">
-          <h2>Şirket</h2>
-          <p id="company-name"></p>
+        <!-- Demo modu uyarısı — sahte çıktı gerçek analiz sanılmasın -->
+        <div id="demo-banner" class="demo-banner hidden">
+          <span class="demo-badge">DEMO MODU</span>
+          <span>
+            Bu sonuçlar <b>gerçek bir yapay zekâ analizi değildir</b> — önceden
+            hazırlanmış örnek metinlerdir ve analiz edilen siteyle ilgisi
+            olmayabilir. Gerçek analiz için <code>LLM_PROVIDER</code> ayarını
+            <code>gemini</code> veya <code>claude</code> yapın.
+          </span>
+        </div>
+
+        <!-- İçerik zayıfsa uyarı -->
+        <div id="thin-content" class="notice hidden">
+          <strong>Bu sayfadan az içerik alındı.</strong>
+          <span id="thin-content-detail"></span>
+          Analiz sınırlı kalabilir — şirketin <b>ana sayfasını</b> denemek daha iyi sonuç verir.
         </div>
 
         <div class="card">
-          <div class="card-head">
-            <h2>Çekilen İçerik</h2>
-            <span id="scrape-badge" class="renderer-badge"></span>
-          </div>
-          <p id="scrape-meta" class="scrape-meta"></p>
-          <p id="content-preview" class="preview"></p>
+          <h2><span class="ico">🏢</span> Şirket</h2>
+          <p id="company-name" class="company-name"></p>
         </div>
 
         <!-- AI kapalı durumu (profesyonel bilgilendirme) -->
@@ -79,34 +100,71 @@
         </div>
 
         <!-- AI'ya bağlı kartlar: anahtar yoksa gizlenir -->
-        <div class="card ai-card">
+        <div class="card score-card ai-card">
           <div class="card-head">
-            <h2>Lead Skoru</h2>
-            <span id="lead-score" class="score-badge"></span>
+            <h2><span class="ico">🎯</span> Lead Skoru</h2>
+            <span id="lead-tier" class="tier-badge"></span>
           </div>
+
+          <div class="score-row">
+            <span id="lead-score" class="score-value">0</span>
+            <span class="score-max">/ 100</span>
+          </div>
+
+          <div class="score-track">
+            <div id="score-bar" class="score-bar"></div>
+          </div>
+          <div class="score-scale">
+            <span>0 · Soğuk</span><span>40 · Ilık</span><span>70 · Sıcak</span>
+          </div>
+
+          <p id="score-lead" class="score-lead"></p>
+
           <ul id="score-reasons" class="reasons"></ul>
+
+          <details class="score-help">
+            <summary>Bu puan nasıl hesaplanıyor?</summary>
+            <p>
+              Lead skoru, bu şirketin <b>sizin için ne kadar uygun bir potansiyel
+              müşteri</b> olduğunu 0–100 arasında gösterir. Yapay zekâ tahmini değil,
+              sabit kurallarla hesaplanır — bu yüzden her puanın gerekçesi yukarıda
+              tek tek listelenir.
+            </p>
+            <table class="score-table">
+              <tr><td>Hedef sektörde faaliyet gösteriyor</td><td>+25</td></tr>
+              <tr><td>Aktif olarak işe alım yapıyor</td><td>+15</td></tr>
+              <tr><td>Büyüme sinyali (her biri)</td><td>+10 <span class="dim">(en fazla 20)</span></td></tr>
+              <tr><td>Kullandığı teknolojiler tespit edildi</td><td>+10</td></tr>
+              <tr><td>Çalışan sayısı bandı</td><td>+10 … +30</td></tr>
+            </table>
+            <p class="dim">
+              <b>0–39 Soğuk:</b> şimdilik öncelik değil ·
+              <b>40–69 Ilık:</b> araştırmaya değer ·
+              <b>70–100 Sıcak:</b> hemen temas kurun
+            </p>
+          </details>
         </div>
 
         <div class="card ai-card">
-          <h2>Özet</h2>
+          <h2><span class="ico">📄</span> Özet</h2>
           <p id="summary"></p>
         </div>
 
         <div class="card ai-card">
-          <h2>Acı Noktaları</h2>
+          <h2><span class="ico">⚡</span> Acı Noktaları</h2>
           <ul id="pain-points"></ul>
         </div>
 
         <div class="card ai-card" id="signals-card">
-          <h2>Sinyaller</h2>
+          <h2><span class="ico">📡</span> Sinyaller</h2>
           <div id="signals" class="signals"></div>
         </div>
 
         <div class="card ai-card">
           <div class="card-head">
-            <h2>Soğuk E-posta</h2>
+            <h2><span class="ico">✉️</span> Soğuk E-posta</h2>
             <div class="btn-group">
-              <button id="regenerate-btn" class="copy-btn">↻ Yeniden üret</button>
+              <button id="regenerate-btn" class="copy-btn" title="Yeni bir versiyon üret">↻ Yeniden üret</button>
               <button class="copy-btn" data-copy-target="cold-email">Kopyala</button>
             </div>
           </div>
@@ -115,10 +173,19 @@
 
         <div class="card ai-card">
           <div class="card-head">
-            <h2>Toplantı Sunumu</h2>
+            <h2><span class="ico">🗣️</span> Toplantı Sunumu</h2>
             <button class="copy-btn" data-copy-target="pitch">Kopyala</button>
           </div>
           <pre id="pitch" class="text-block"></pre>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2><span class="ico">🔍</span> Çekilen İçerik</h2>
+            <span id="scrape-badge" class="renderer-badge"></span>
+          </div>
+          <p id="scrape-meta" class="scrape-meta"></p>
+          <p id="content-preview" class="preview"></p>
         </div>
       </section>
     </main>

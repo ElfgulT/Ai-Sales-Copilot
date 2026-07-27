@@ -26,8 +26,13 @@ const els = {
   url: document.getElementById("current-url"),
   analyzeBtn: document.getElementById("analyze-btn"),
   loading: document.getElementById("loading"),
+  loadingStep: document.getElementById("loading-step"),
+  loadingBar: document.getElementById("loading-bar"),
   error: document.getElementById("error"),
   result: document.getElementById("result"),
+  demoBanner: document.getElementById("demo-banner"),
+  thinContent: document.getElementById("thin-content"),
+  thinContentDetail: document.getElementById("thin-content-detail"),
   aiStatus: document.getElementById("ai-status"),
   aiCards: document.querySelectorAll(".ai-card"),
   companyName: document.getElementById("company-name"),
@@ -35,6 +40,9 @@ const els = {
   scrapeMeta: document.getElementById("scrape-meta"),
   contentPreview: document.getElementById("content-preview"),
   leadScore: document.getElementById("lead-score"),
+  leadTier: document.getElementById("lead-tier"),
+  scoreBar: document.getElementById("score-bar"),
+  scoreLead: document.getElementById("score-lead"),
   scoreReasons: document.getElementById("score-reasons"),
   summary: document.getElementById("summary"),
   painPoints: document.getElementById("pain-points"),
@@ -48,13 +56,57 @@ const els = {
 let activeUrl = null;
 let jwtToken = null;
 
+// Skor eşikleri — backend'deki `ScoringConfig` ile aynı olmalı.
+const TIER_LABELS = { hot: "Sıcak", warm: "Ilık", cold: "Soğuk" };
+const TIER_LEADS = {
+  hot: "Güçlü bir eşleşme — öncelikli olarak temas kurmaya değer.",
+  warm: "Umut verici — biraz daha araştırmaya değer bir aday.",
+  cold: "Zayıf eşleşme — şimdilik öncelik vermeniz gerekmeyebilir.",
+};
+
+// Analizin arka planda geçtiği aşamalar. Süreler ölçüme dayalı yaklaşık
+// değerlerdir; gerçek ilerleme yüzdesi backend'den gelmediği için çubuk
+// %92'de bekler ve yalnızca sonuç geldiğinde tamamlanır.
+const LOADING_STEPS = [
+  { at: 0, pct: 8, text: "Site taranıyor…" },
+  { at: 5000, pct: 28, text: "Alt sayfalar okunuyor…" },
+  { at: 11000, pct: 48, text: "İlgili bölümler seçiliyor…" },
+  { at: 16000, pct: 68, text: "Şirket analiz ediliyor…" },
+  { at: 22000, pct: 92, text: "E-posta ve sunum yazılıyor…" },
+];
+
+let loadingTimers = [];
+
 // --- Genel yardımcılar ---
 function show(el) { el.classList.remove("hidden"); }
 function hide(el) { el.classList.add("hidden"); }
 
+function startLoadingSteps() {
+  stopLoadingSteps();
+  loadingTimers = LOADING_STEPS.map((step) =>
+    setTimeout(() => {
+      els.loadingStep.textContent = step.text;
+      els.loadingBar.style.width = step.pct + "%";
+    }, step.at)
+  );
+}
+
+function stopLoadingSteps() {
+  for (const t of loadingTimers) clearTimeout(t);
+  loadingTimers = [];
+}
+
 function setLoading(isLoading) {
   els.analyzeBtn.disabled = isLoading;
-  isLoading ? show(els.loading) : hide(els.loading);
+  if (isLoading) {
+    els.loadingBar.style.width = "0%";
+    show(els.loading);
+    startLoadingSteps();
+  } else {
+    stopLoadingSteps();
+    els.loadingBar.style.width = "100%";
+    hide(els.loading);
+  }
 }
 
 function showError(message) {
@@ -65,6 +117,8 @@ function showError(message) {
 function clearFeedback() {
   hide(els.error);
   hide(els.result);
+  hide(els.thinContent);
+  hide(els.demoBanner);
 }
 
 // --- Görünüm geçişleri ---
@@ -172,8 +226,19 @@ async function requestAnalysis(url) {
 
 // --- Render ---
 function renderScore(leadScore) {
+  const tier = leadScore.tier;
+
   els.leadScore.textContent = leadScore.value;
-  els.leadScore.className = "score-badge " + leadScore.tier;
+  els.leadScore.className = "score-value " + tier;
+
+  els.leadTier.textContent = TIER_LABELS[tier] ?? tier;
+  els.leadTier.className = "tier-badge " + tier;
+
+  els.scoreBar.style.width = Math.max(0, Math.min(100, leadScore.value)) + "%";
+  els.scoreBar.className = "score-bar " + tier;
+
+  els.scoreLead.textContent = TIER_LEADS[tier] ?? "";
+
   els.scoreReasons.innerHTML = "";
   for (const reason of leadScore.reasons) {
     const li = document.createElement("li");
@@ -181,6 +246,20 @@ function renderScore(leadScore) {
     li.textContent = `${sign}${reason.points} — ${reason.explanation}`;
     els.scoreReasons.appendChild(li);
   }
+}
+
+// Çekilen içerik çok azsa kullanıcıyı uyarır. Eşik, backend'in "içerik zayıf"
+// kabul ettiği sınırla (scraper_min_words_for_dynamic) aynıdır.
+const THIN_CONTENT_WORDS = 120;
+
+function renderThinContentNotice(scraped) {
+  const words = scraped?.word_count ?? 0;
+  if (!scraped || words >= THIN_CONTENT_WORDS) {
+    hide(els.thinContent);
+    return;
+  }
+  els.thinContentDetail.textContent = ` Yalnızca ${words} kelime alınabildi. `;
+  show(els.thinContent);
 }
 
 function renderList(container, items) {
@@ -229,6 +308,10 @@ function renderSignals(signals) {
 function renderResult(data) {
   els.companyName.textContent = data.company_name ?? "—";
   renderScraped(data.scraped);
+  renderThinContentNotice(data.scraped);
+
+  // Demo modunda çıktı gerçek analiz değildir; bunu gizlemek yanıltıcı olur.
+  els.demoBanner.classList.toggle("hidden", !data.meta?.is_demo);
 
   const aiOff = Boolean(data.meta?.is_stub);
   els.aiStatus.classList.toggle("hidden", !aiOff);
@@ -331,11 +414,16 @@ async function onRegenerateClick() {
 async function onCopyClick(event) {
   const targetId = event.target.dataset.copyTarget;
   const text = document.getElementById(targetId)?.textContent ?? "";
+  const btn = event.target;
   try {
     await navigator.clipboard.writeText(text);
-    const original = event.target.textContent;
-    event.target.textContent = "Kopyalandı ✓";
-    setTimeout(() => (event.target.textContent = original), 1200);
+    const original = btn.textContent;
+    btn.textContent = "✓ Kopyalandı";
+    btn.classList.add("done");
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.classList.remove("done");
+    }, 1400);
   } catch {
     showError("Panoya kopyalanamadı.");
   }
