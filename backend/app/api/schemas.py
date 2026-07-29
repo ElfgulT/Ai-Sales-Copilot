@@ -60,6 +60,7 @@ class AnalysisMetaSchema(BaseModel):
     generated_at: datetime
     pipeline_version: str
     is_stub: bool
+    is_demo: bool = False
 
 
 class ScrapedContentSchema(BaseModel):
@@ -157,6 +158,7 @@ class AnalyzeResponse(BaseModel):
                 generated_at=analysis.meta.generated_at,
                 pipeline_version=analysis.meta.pipeline_version,
                 is_stub=analysis.meta.is_stub,
+                is_demo=analysis.meta.is_demo,
             ),
             scraped=(
                 ScrapedContentSchema.from_domain(analysis.scraped)
@@ -178,6 +180,7 @@ class EmailResponse(BaseModel):
     cold_email: str
     pitch: str
     is_stub: bool
+    is_demo: bool = False
 
     @classmethod
     def from_domain(cls, analysis: CompanyAnalysis) -> "EmailResponse":
@@ -186,6 +189,7 @@ class EmailResponse(BaseModel):
             cold_email=analysis.cold_email,
             pitch=analysis.pitch,
             is_stub=analysis.meta.is_stub,
+            is_demo=analysis.meta.is_demo,
         )
 
 

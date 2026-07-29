@@ -58,6 +58,10 @@ class AnalysisMeta:
     generated_at: datetime
     pipeline_version: str
     is_stub: bool  # True ise sonuç gerçek değil, iskelet/placeholder verisidir
+    # True ise çıktı `DemoLLMProvider`'dan geldi: gerçek bir model çağrısı YAPILMADI,
+    # önceden yazılmış örnek metinler döndürüldü. Kullanıcıya mutlaka bildirilmeli —
+    # aksi halde sahte analiz, gerçek analiz sanılır (sunum ve jüri açısından kritik).
+    is_demo: bool = False
 
 
 @dataclass(frozen=True, slots=True)

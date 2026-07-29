@@ -3,6 +3,11 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
+    # ÖNCE ÇALIŞTIRIN:  cp backend/.env.example backend/.env  ve içini doldurun.
+    # Ortam `production` olduğu için uygulama, COPILOT_JWT_SECRET ayarlanmadan
+    # AÇILMAZ ve nedenini söyleyen bir hata verir. Bu kasıtlıdır: varsayılan
+    # (herkesin bildiği) bir sırla üretimde çalışmak, isteyen herkesin kendine
+    # geçerli oturum token'ı üretebilmesi anlamına gelir.
     env_file:
       - path: ./backend/.env
         required: false

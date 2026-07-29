@@ -75,7 +75,16 @@ def get_vector_store() -> SimpleVectorStore:
 
 @lru_cache
 def get_enrichment_service() -> ApolloEnrichmentService:
-    return ApolloEnrichmentService()
+    """Apollo.io zenginleştirme servisi (tekil).
+
+    Anahtar `Settings`'ten okunur; tanımlı değilse servis devre dışı kalır ve
+    analiz zenginleştirmesiz devam eder.
+    """
+    settings = get_settings()
+    service = ApolloEnrichmentService(settings.apollo_api_key)
+    if not service.is_enabled:
+        logger.info("Apollo zenginleştirme kapalı (APOLLO_API_KEY tanımlı değil).")
+    return service
 
 
 @lru_cache
@@ -115,6 +124,16 @@ def get_analysis_service() -> AnalysisService:
         email_max_tokens=settings.llm_email_max_tokens,
         pitch_max_tokens=settings.llm_pitch_max_tokens,
     )
+    # Demo sağlayıcı gerçek model çağrısı yapmaz, hazır metinler döndürür. Bu
+    # bilgiyi analiz sonucuyla birlikte taşıyoruz ki eklenti kullanıcıyı açıkça
+    # uyarabilsin — sahte çıktının gerçek analiz sanılması kabul edilemez.
+    is_demo = settings.llm_provider.strip().lower() == "demo"
+    if is_demo:
+        logger.warning(
+            "DEMO MODU etkin: analizler gerçek model çağrısı değil, hazır örnek "
+            "metinlerdir. Sunum/demo dışında kullanmayın."
+        )
+
     return LLMAnalysisService(
         get_web_scraper(),
         analyzer,
@@ -123,6 +142,7 @@ def get_analysis_service() -> AnalysisService:
         robots_checker=robots_checker,
         vector_store=get_vector_store(),
         enrichment_service=get_enrichment_service(),
+        is_demo=is_demo,
     )
 
 

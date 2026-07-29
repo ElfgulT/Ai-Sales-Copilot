@@ -46,6 +46,7 @@ class LLMAnalysisService(AnalysisService):
         robots_checker: RobotsChecker | None = None,
         vector_store: VectorStore | None = None,
         enrichment_service: EnrichmentService | None = None,
+        is_demo: bool = False,
     ):
         self._scraper = scraper
         self._analyzer = analyzer
@@ -54,6 +55,7 @@ class LLMAnalysisService(AnalysisService):
         self._robots_checker = robots_checker
         self._vector_store = vector_store
         self._enrichment_service = enrichment_service
+        self._is_demo = is_demo
 
     async def analyze(self, url: str) -> CompanyAnalysis:
         if self._robots_checker is not None and not await self._robots_checker.is_allowed(url):
@@ -108,6 +110,7 @@ class LLMAnalysisService(AnalysisService):
                 generated_at=datetime.now(timezone.utc),
                 pipeline_version=PIPELINE_VERSION,
                 is_stub=False,
+                is_demo=self._is_demo,
             ),
             scraped=content,
             signals=insights.signals,
