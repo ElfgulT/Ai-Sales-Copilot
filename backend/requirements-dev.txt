@@ -3,4 +3,7 @@
 
 pytest>=8.3,<9.0
 pytest-asyncio>=0.24,<0.25
+# Linter. Ana sürüm sabitli: ruff yeni kural ekledikçe CI kendiliğinden
+# kırmızıya dönmesin. Kural seçimi backend/pyproject.toml içinde.
+ruff>=0.16,<0.17
 # httpx zaten requirements.txt'te (TestClient ve mock transport için kullanılır)

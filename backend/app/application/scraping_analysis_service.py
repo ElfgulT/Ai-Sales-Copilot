@@ -12,7 +12,7 @@ scraper'ın geldiğini bilmez.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app import PIPELINE_VERSION
 from app.application.company_name import derive_company_name
@@ -58,7 +58,7 @@ class ScrapingAnalysisService(AnalysisService):
             cold_email="[LLM KAPALI] Soğuk e-posta için API anahtarı ekleyin.",
             pitch="[LLM KAPALI] Toplantı sunumu için API anahtarı ekleyin.",
             meta=AnalysisMeta(
-                generated_at=datetime.now(timezone.utc),
+                generated_at=datetime.now(UTC),
                 pipeline_version=PIPELINE_VERSION,
                 is_stub=True,
             ),

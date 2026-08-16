@@ -1,0 +1,42 @@
+name: CI
+
+# Her push ve pull request'te testleri ve linter'ı çalıştırır.
+# Amaç: main dalının her zaman çalışır durumda olduğunu kanıtlamak.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # Actions sekmesinden elle de tetiklenebilir.
+
+jobs:
+  backend:
+    name: Backend testleri ve linter
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Bağımlılıkları kur
+        # NOT: `playwright install` BİLEREK çalıştırılmıyor. Testler dinamik
+        # scraper'ı sahteliyor; tarayıcı indirmek CI'ı gereksiz yere ~30 sn
+        # ve yüzlerce MB uzatır. Gerçek tarayıcı gerektiren bir test eklenirse
+        # buraya `playwright install --with-deps chromium` eklenmeli.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Linter (ruff)
+        run: ruff check .
+
+      - name: Testler (pytest)
+        # Testler ne gerçek LLM'e ne de ağa çıkar; API anahtarı gerekmez.
+        run: pytest

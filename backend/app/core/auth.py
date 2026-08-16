@@ -41,7 +41,8 @@ async def get_current_user(
         email = decode_access_token(token, settings)
     except jwt.InvalidTokenError:
         logger.warning("Geçersiz JWT token.")
-        raise _CREDENTIALS_EXCEPTION
+        # `from None`: token ayrıştırma hatasının ayrıntısı istemciye sızmamalı.
+        raise _CREDENTIALS_EXCEPTION from None
 
     user = await db.scalar(select(UserORM).where(UserORM.email == email))
     if user is None or not user.is_active:

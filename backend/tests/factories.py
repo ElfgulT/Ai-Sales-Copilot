@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain.interfaces import (
     CompanyInsightAnalyzer,
@@ -27,6 +27,7 @@ def make_scraped_content(
     word_count: int | None = None,
     renderer: str = "static",
     detected_name: str | None = None,
+    links: tuple[str, ...] = (),
 ) -> ScrapedContent:
     return ScrapedContent(
         url=url,
@@ -37,8 +38,9 @@ def make_scraped_content(
         headings=(),
         word_count=word_count if word_count is not None else len(text.split()),
         renderer=renderer,
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
         detected_name=detected_name,
+        links=links,
     )
 
 

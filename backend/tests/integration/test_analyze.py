@@ -7,12 +7,14 @@ servisle override edilir.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_analysis_service, get_cached_analysis_service
+from app.application.llm_analysis_service import LLMAnalysisService
+from app.application.rule_based_scoring_engine import RuleBasedScoringEngine
 from app.application.scraping_analysis_service import ScrapingAnalysisService
 from app.domain.interfaces import AnalysisService
 from app.domain.models import (
@@ -22,9 +24,6 @@ from app.domain.models import (
     LeadTier,
     ScoreReason,
 )
-from app.application.llm_analysis_service import LLMAnalysisService
-from app.application.rule_based_scoring_engine import RuleBasedScoringEngine
-from app.main import create_app
 from tests.conftest import make_test_app
 from tests.factories import (
     FakeAnalyzer,
@@ -135,7 +134,7 @@ def test_analyze_uses_injected_service(settings) -> None:
                 cold_email="sahte email",
                 pitch="sahte pitch",
                 meta=AnalysisMeta(
-                    generated_at=datetime.now(timezone.utc),
+                    generated_at=datetime.now(UTC),
                     pipeline_version="test",
                     is_stub=False,
                 ),

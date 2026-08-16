@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 from app.api.dependencies import get_analysis_service, get_cached_analysis_service
 from app.application.llm_analysis_service import LLMAnalysisService
 from app.application.rule_based_scoring_engine import RuleBasedScoringEngine
-from app.main import create_app
 from tests.conftest import make_test_app
 from tests.factories import (
     FakeAnalyzer,

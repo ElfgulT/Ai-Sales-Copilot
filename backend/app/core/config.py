@@ -159,7 +159,7 @@ class Settings(BaseSettings):
         return self.environment.lower() == "production"
 
     @model_validator(mode="after")
-    def _reject_default_secret_in_production(self) -> "Settings":
+    def _reject_default_secret_in_production(self) -> Settings:
         """Üretimde varsayılan JWT sırrıyla açılmayı reddeder.
 
         `docker-compose.yml` ortamı `production` olarak ayarlıyor ve `.env`

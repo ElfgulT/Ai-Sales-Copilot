@@ -43,7 +43,7 @@ async def register(
     try:
         await auth_service.register_user(payload.email, payload.password, db)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return MessageResponse(message="Kayıt başarılı.")
 
 

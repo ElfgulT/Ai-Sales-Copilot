@@ -14,7 +14,7 @@ from app.infrastructure.llm.gemini_provider import GeminiLLMProvider
 
 
 def _settings(**overrides) -> Settings:
-    base = dict(environment="test", anthropic_api_key=None, gemini_api_key=None)
+    base = {"environment": "test", "anthropic_api_key": None, "gemini_api_key": None}
     base.update(overrides)
     return Settings(**base)
 

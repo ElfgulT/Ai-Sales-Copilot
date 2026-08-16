@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
@@ -28,7 +28,7 @@ async def test_caching_analysis_service_caches_results() -> None:
         headings=("H1",),
         word_count=2,
         renderer="static",
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
     )
     fake_analysis = CompanyAnalysis(
         url="https://example.com",
@@ -39,7 +39,7 @@ async def test_caching_analysis_service_caches_results() -> None:
         cold_email="Mail",
         pitch="Pitch",
         meta=AnalysisMeta(
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             pipeline_version="0.5.1",
             is_stub=True,
         ),

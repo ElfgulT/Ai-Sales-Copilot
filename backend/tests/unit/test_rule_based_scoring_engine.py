@@ -7,14 +7,14 @@ from app.domain.models import CompanySignals, LeadTier
 
 
 def _signals(**overrides) -> CompanySignals:
-    base = dict(
-        sector=None,
-        employee_band=None,
-        is_hiring=False,
-        hiring_roles=(),
-        growth_signals=(),
-        technologies=(),
-    )
+    base = {
+        "sector": None,
+        "employee_band": None,
+        "is_hiring": False,
+        "hiring_roles": (),
+        "growth_signals": (),
+        "technologies": (),
+    }
     base.update(overrides)
     return CompanySignals(**base)
 

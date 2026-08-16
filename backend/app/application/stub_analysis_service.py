@@ -11,7 +11,7 @@ böylece kimse demo'da bunu gerçek analiz sanmaz.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from app import PIPELINE_VERSION
@@ -65,7 +65,7 @@ class StubAnalysisService(AnalysisService):
             ),
             pitch="[İSKELET] Toplantı sunum metni Sprint 4'te üretilecek.",
             meta=AnalysisMeta(
-                generated_at=datetime.now(timezone.utc),
+                generated_at=datetime.now(UTC),
                 pipeline_version=PIPELINE_VERSION,
                 is_stub=True,
             ),

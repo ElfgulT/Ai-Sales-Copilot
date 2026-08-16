@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import logging
+
 from app.domain.interfaces import LLMProvider
 
 logger = logging.getLogger(__name__)

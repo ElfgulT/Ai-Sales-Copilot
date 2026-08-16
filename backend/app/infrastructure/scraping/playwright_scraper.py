@@ -48,7 +48,11 @@ class PlaywrightScraper(WebScraper):
         try:
             from playwright.async_api import (
                 Error as PlaywrightError,
+            )
+            from playwright.async_api import (
                 TimeoutError as PlaywrightTimeoutError,
+            )
+            from playwright.async_api import (
                 async_playwright,
             )
         except ImportError as exc:  # pragma: no cover - ortama bağlı

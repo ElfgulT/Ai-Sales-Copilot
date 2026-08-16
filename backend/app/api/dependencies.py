@@ -22,16 +22,18 @@ from app.application.scraping_analysis_service import ScrapingAnalysisService
 from app.core.config import get_settings
 from app.domain.interfaces import AnalysisService, WebScraper
 from app.domain.models import SellerProfile
+from app.infrastructure.enrichment.apollo_service import ApolloEnrichmentService
 from app.infrastructure.llm.factory import create_llm_provider
+from app.infrastructure.rag.vector_store import SimpleVectorStore
 from app.infrastructure.scraping.beautifulsoup_scraper import BeautifulSoupScraper
-
-logger = logging.getLogger(__name__)
 from app.infrastructure.scraping.hybrid_scraper import HybridScraper
 from app.infrastructure.scraping.multi_page_crawler import MultiPageCrawler
 from app.infrastructure.scraping.playwright_scraper import PlaywrightScraper
 from app.infrastructure.scraping.rate_limiter import HostRateLimiter
 from app.infrastructure.scraping.robots import RobotsChecker
 from app.infrastructure.scraping.url_guard import UrlGuard
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache
@@ -62,10 +64,6 @@ def get_web_scraper() -> WebScraper:
         min_words=settings.scraper_min_words_for_dynamic,
     )
     return MultiPageCrawler(hybrid, max_subpages=4)
-
-
-from app.infrastructure.enrichment.apollo_service import ApolloEnrichmentService
-from app.infrastructure.rag.vector_store import SimpleVectorStore
 
 
 def get_vector_store() -> SimpleVectorStore:

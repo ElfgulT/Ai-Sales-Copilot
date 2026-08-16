@@ -1,4 +1,4 @@
-# Bu dosya paketleme için değil, yalnızca araç (pytest) yapılandırması içindir.
+# Bu dosya paketleme için değil, yalnızca araç (pytest, ruff) yapılandırması içindir.
 [tool.pytest.ini_options]
 # `app` paketinin import edilebilmesi için backend kökünü yola ekler.
 pythonpath = ["."]
@@ -6,3 +6,29 @@ testpaths = ["tests"]
 # Async testleri `@pytest.mark.asyncio` ile otomatik çalıştır.
 asyncio_mode = "auto"
 addopts = "-ra -q"
+
+# --- Ruff (linter) ---
+# Kurallar BİLEREK sabitlenmiştir: ruff varsayılanları sürümden sürüme değişiyor,
+# sabitlenmezse CI bir gün kendiliğinden kırmızıya döner.
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E4", "E7", "E9",  # pycodestyle: import yerleşimi, sözdizimi, ciddi hatalar
+    "F",               # pyflakes: kullanılmayan import/değişken, tanımsız isim
+    "I",               # isort: import sıralaması
+    "UP",              # pyupgrade: eski Python kalıpları
+    "B",               # flake8-bugbear: sık rastlanan hata tuzakları
+    "C4",              # gereksiz comprehension/collection çağrıları
+]
+ignore = [
+    # FastAPI'de `Depends(...)` / `Query(...)` varsayılan argümanda ÇAĞRILIR;
+    # framework'ün tasarımı bu. B008 burada yanlış pozitif.
+    "B008",
+    # `class LeadTier(str, Enum)` -> `StrEnum` önerisi. Davranış farkı var:
+    # StrEnum'da `str(LeadTier.HOT)` "hot" döner, mevcut kalıpta "LeadTier.HOT".
+    # API çıktısını sessizce değiştirebileceği için bilinçli olarak uygulanmadı.
+    "UP042",
+]

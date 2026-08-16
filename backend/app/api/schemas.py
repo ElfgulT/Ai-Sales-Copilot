@@ -45,7 +45,7 @@ class LeadScoreSchema(BaseModel):
     reasons: list[ScoreReasonSchema]
 
     @classmethod
-    def from_domain(cls, score: LeadScore) -> "LeadScoreSchema":
+    def from_domain(cls, score: LeadScore) -> LeadScoreSchema:
         return cls(
             value=score.value,
             tier=score.tier.value,
@@ -79,7 +79,7 @@ class ScrapedContentSchema(BaseModel):
     PREVIEW_CHARS: ClassVar[int] = 320
 
     @classmethod
-    def from_domain(cls, content: ScrapedContent) -> "ScrapedContentSchema":
+    def from_domain(cls, content: ScrapedContent) -> ScrapedContentSchema:
         return cls(
             title=content.title,
             site_name=content.site_name,
@@ -119,7 +119,7 @@ class SignalsSchema(BaseModel):
     technologies: list[str]
 
     @classmethod
-    def from_domain(cls, signals: CompanySignals) -> "SignalsSchema":
+    def from_domain(cls, signals: CompanySignals) -> SignalsSchema:
         return cls(
             sector=signals.sector,
             employee_band=signals.employee_band,
@@ -145,7 +145,7 @@ class AnalyzeResponse(BaseModel):
     signals: SignalsSchema | None = None
 
     @classmethod
-    def from_domain(cls, analysis: CompanyAnalysis) -> "AnalyzeResponse":
+    def from_domain(cls, analysis: CompanyAnalysis) -> AnalyzeResponse:
         return cls(
             url=analysis.url,
             company_name=analysis.company_name,
@@ -183,7 +183,7 @@ class EmailResponse(BaseModel):
     is_demo: bool = False
 
     @classmethod
-    def from_domain(cls, analysis: CompanyAnalysis) -> "EmailResponse":
+    def from_domain(cls, analysis: CompanyAnalysis) -> EmailResponse:
         return cls(
             company_name=analysis.company_name,
             cold_email=analysis.cold_email,
