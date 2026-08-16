@@ -1,3 +1,4 @@
+[![CI](https://github.com/ElfgulT/Ai-Sales-Copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/ElfgulT/Ai-Sales-Copilot/actions/workflows/ci.yml)
 
 > ### 📌 Bu bir ekip projesidir
 >
@@ -32,6 +33,37 @@ Rolüm: **Product Owner** + backend / AI geliştirme. Depodaki 21 commit bana ai
 **Test ve arayüz**
 - Backend için birim ve entegrasyon testleri
 - Manifest V3 Chrome eklentisi paneli; lead skorunu açıklayan ve güvenilmez sonuçlarda kullanıcıyı uyaran arayüz geliştirmeleri
+
+### Bootcamp sonrası bireysel geliştirmeler
+
+Bootcamp süreci tamamlandıktan sonra, yalnızca bu depoda devam ettirdiğim çalışmalar:
+
+- **Kirlenmiş analiz girdisi düzeltildi (scraper hatası).** python.org analizinde
+  "sitenizde 404 hataları var" diye yanlış bir acı noktası çıkıyordu. İlk teşhis
+  halüsinasyondu; log'lar tersini gösterdi. Gerçek sebep: `MultiPageCrawler`
+  var olmayan alt sayfaları deniyor (`/about-us`, `/services`), `HybridScraper`
+  404'ü "belki JavaScript ile yüklenir" sanıp dinamik yedeğe düşüyor, Playwright
+  da sitenin **404 sayfasını** başarıyla render ediyordu — hata sayfasının metni
+  şirket içeriği olarak analize karışıyordu. 404 artık ayrı bir hata türü
+  (`PageNotFoundError`) ve dinamik yedek denenmiyor. Sonuç: python.org'da analiz
+  metni 1081 → 730 kelimeye indi ve tamamı gerçek içerik; üç gereksiz tarayıcı
+  başlatma da ortadan kalktı.
+- **Teknik sayfa kalıntıları artık bulgu sayılmıyor.** Ana sayfadaki JavaScript
+  uyarısı "sayfalar yedek modda görüntüleniyor" şeklinde bir acı noktasına
+  dönüşüyordu. Ayrıca şema "2-4 acı noktası" isteyerek modeli dayanak olmadığında
+  doldurmaya zorluyordu; artık dayanak yoksa boş liste dönüyor.
+- **Uydurma istatistik yasağı.** Pitch çıktısında "%80 azaltabilirsiniz" gibi
+  hiçbir kaynağa dayanmayan sayılar üretiliyordu. E-posta ve pitch prompt'larının
+  ikisine birden sayı/yüzde/oran uydurma yasağı eklendi.
+- **Alt sayfa seçimi akıllandırıldı.** Yukarıdaki hatanın asıl tetikleyicisi,
+  crawler'ın sabit bir adres listesini körlemesine denemesiydi. Artık adaylar
+  ana sayfanın kendi bağlantılarından seçiliyor (aynı host, anlamlı anahtar
+  kelime, dosya olmayan adresler) ve her tema grubundan en fazla bir sayfa
+  alınıyor; sabit liste yalnızca hiç uygun bağlantı yoksa devreye giriyor.
+- Her düzeltme için gerileme testleri yazıldı (toplam 185 test).
+- **CI kuruldu.** Her push ve pull request'te ruff + pytest çalışıyor (yukarıdaki rozet).
+- **Ruff yapılandırması sabitlendi** ve mevcut lint bulguları giderildi; kural
+  seçimi `backend/pyproject.toml` içinde, gerekçeleriyle birlikte.
 
 ---
 
@@ -178,8 +210,8 @@ saran bir **Decorator** olarak eklendiği için iş kurallarına hiç dokunulmam
 ### Seçenek 1 — Yerel geliştirme
 
 ```bash
-git clone https://github.com/hkursatakburak/AI-Sales-Copilot.git
-cd AI-Sales-Copilot/backend
+git clone https://github.com/ElfgulT/Ai-Sales-Copilot.git
+cd Ai-Sales-Copilot/backend
 
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
