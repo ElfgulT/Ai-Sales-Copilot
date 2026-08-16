@@ -1,5 +1,39 @@
 
+> ### 📌 Bu bir ekip projesidir
+>
+> **AI Sales Copilot**, Google Yapay Zeka ve Teknoloji Akademisi Bootcamp kapsamında **AI Innovators** ekibiyle
+> (4 kişi) geliştirilmiştir. Bu depo, projenin portföyümde sergilediğim kopyasıdır.
+>
+> **Ana depo:** https://github.com/hkursatakburak/AI-Sales-Copilot
+>
+> Aşağıdaki dokümanın tamamı ekibin ortak çalışmasıdır. Kendi rolüm ve teknik
+> katkılarım hemen aşağıda listelenmiştir.
 
+## Katkılarım — Elifgül Topcu
+
+Rolüm: **Product Owner** + backend / AI geliştirme. Depodaki 21 commit bana aittir.
+
+**Mimari ve iskelet**
+- Clean Architecture katmanlarının kurulması (domain / application / infrastructure / api), bağımlılık enjeksiyonu ve uçtan uca çalışan ilk sürüm (Chrome eklentisi ↔ FastAPI)
+
+**Web scraping katmanı**
+- BeautifulSoup (statik) + Playwright (dinamik) hibrit kazıyıcı, otomatik fallback mekanizmasıyla
+- Güvenlik ve uyum: SSRF koruması (özel IP engelleme), robots.txt denetimi, host bazlı istek sınırlama
+- Dayanıklılık: hata taksonomisi (site engeli / zaman aşımı / DNS / SSL), geçici hatalarda backoff'lu yeniden deneme, kullanıcıya sade Türkçe hata mesajları
+
+**LLM entegrasyonu**
+- Sağlayıcıdan bağımsız `LLMProvider` soyutlaması ve factory yapısı; Claude ve Gemini sağlayıcılarının ikisi de tarafımdan yazıldı
+- Gemini 2.5 Flash'ta içerik zengin sayfalarda çıktının kesilmesi sorununun kök neden analizi ve çözümü (thinking budget yönetimi + toleranslı JSON ayrıştırma)
+
+**Lead scoring ve metin üretimi**
+- Kural tabanlı, **açıklanabilir** puanlama motoru — "model neden bu skoru verdi?" sorusu yanıtlanabiliyor
+- Few-shot prompting ile klişelerden arındırılmış soğuk e-posta ve toplantı pitch'i üretimi
+
+**Test ve arayüz**
+- Backend için birim ve entegrasyon testleri
+- Manifest V3 Chrome eklentisi paneli; lead skorunu açıklayan ve güvenilmez sonuçlarda kullanıcıyı uyaran arayüz geliştirmeleri
+
+---
 
 
 
