@@ -42,6 +42,10 @@ _TITLE_SEPARATORS = ("|", "—", "–", "-", "·", ":", "•", "·")
 _ORG_TYPES = {"organization", "corporation", "localbusiness", "onlinestore", "website"}
 
 
+# Sayfa başına toplanan ham bağlantı sayısı üst sınırı (bellek/işlem koruması).
+_MAX_LINKS = 300
+
+
 @dataclass(frozen=True)
 class CleanedDocument:
     title: str | None
@@ -50,6 +54,8 @@ class CleanedDocument:
     text: str
     headings: tuple[str, ...]
     company_name: str | None  # akıllı öncelikle bulunan şirket adı adayı
+    # Ham (henüz mutlaklaştırılmamış) href değerleri; sayfadaki sıraya sadık.
+    links: tuple[str, ...] = ()
 
 
 def _meta_content(soup: BeautifulSoup, *, name: str | None = None, prop: str | None = None) -> str | None:
@@ -109,10 +115,31 @@ def _find_org_name(node: object) -> str | None:
     return None
 
 
+def _extract_links(soup: BeautifulSoup) -> tuple[str, ...]:
+    """Sayfadaki href değerlerini sırayı bozmadan, tekilleştirerek toplar.
+
+    Gürültü temizliğinden ÖNCE çağrılmalıdır: site gezinme bağlantılarının
+    çoğu `nav`/`footer`/`header` içinde durur ve bunlar sonradan sökülür.
+    """
+    seen: set[str] = set()
+    links: list[str] = []
+    for tag in soup.find_all("a", href=True):
+        href = tag["href"].strip()
+        if not href or href in seen:
+            continue
+        seen.add(href)
+        links.append(href)
+        if len(links) >= _MAX_LINKS:
+            break
+    return tuple(links)
+
+
 def clean_html(html: str) -> CleanedDocument:
     soup = BeautifulSoup(html, "html.parser")
 
-    # Meta bilgileri ve şirket adı adaylarını gürültü temizliğinden ÖNCE topla.
+    # Meta bilgileri, bağlantıları ve şirket adı adaylarını gürültü
+    # temizliğinden ÖNCE topla.
+    links = _extract_links(soup)
     json_ld_name = _extract_json_ld_org_name(soup)
     site_name = _meta_content(soup, prop="og:site_name") or _meta_content(
         soup, name="application-name"
@@ -158,6 +185,7 @@ def clean_html(html: str) -> CleanedDocument:
         text=text,
         headings=headings,
         company_name=company_name,
+        links=links,
     )
 
 

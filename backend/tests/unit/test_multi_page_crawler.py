@@ -32,9 +32,31 @@ class MappingScraper(WebScraper):
         raise ScrapeError(f"Bilinmeyen URL: {url}")
 
 
-def _rich(url: str, text: str) -> ScrapedContent:
+def _rich(url: str, text: str, links: tuple[str, ...] = ()) -> ScrapedContent:
     words = text.split()
-    return make_scraped_content(url=url, text=text, word_count=len(words))
+    return make_scraped_content(url=url, text=text, word_count=len(words), links=links)
+
+
+class LoggingScraper(WebScraper):
+    """Çağrılan URL'leri kaydeden, her istekte aynı içeriği dönen scraper."""
+
+    def __init__(self, content: ScrapedContent) -> None:
+        self._content = content
+        self.calls: list[str] = []
+
+    async def scrape(self, url: str) -> ScrapedContent:
+        self.calls.append(url)
+        return self._content
+
+
+async def _visited_subpages(
+    main: ScrapedContent, *, entry_url: str = "https://example.com", max_subpages: int = 4
+) -> list[str]:
+    """Crawler'ı çalıştırıp ana sayfa dışında ziyaret edilen adresleri döndürür."""
+    scraper = LoggingScraper(main)
+    crawler = MultiPageCrawler(scraper, max_subpages=max_subpages, min_words=50)
+    await crawler.scrape(entry_url)
+    return [u for u in scraper.calls if u.rstrip("/") != entry_url.rstrip("/")]
 
 
 @pytest.mark.asyncio
@@ -166,3 +188,112 @@ async def test_entry_url_not_duplicated_as_candidate() -> None:
 
     called_paths = [url for url in call_log if url.rstrip("/") == "https://example.com/about"]
     assert len(called_paths) == 1  # yalnızca bir kez çekildi
+
+
+@pytest.mark.asyncio
+async def test_candidates_come_from_page_links_not_guesses() -> None:
+    """Sayfada gerçek bağlantı varsa sabit yol listesi hiç denenmez."""
+    main = _rich(
+        "https://example.com",
+        "içerik " * 30,
+        links=(
+            "https://example.com/kurumsal/hakkimizda",
+            "https://example.com/blog/yeni-yazi",
+            "https://example.com/cozumlerimiz",
+        ),
+    )
+
+    visited = await _visited_subpages(main)
+
+    assert visited == [
+        "https://example.com/kurumsal/hakkimizda",
+        "https://example.com/cozumlerimiz",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_ignores_links_from_other_hosts() -> None:
+    main = _rich(
+        "https://example.com",
+        "içerik " * 30,
+        links=(
+            "https://twitter.com/example/about",
+            "https://cdn.other.com/services",
+            "https://www.example.com/about-us",
+        ),
+    )
+
+    visited = await _visited_subpages(main)
+
+    # "www." aynı site sayılır; farklı hostlar elenir.
+    assert visited == ["https://www.example.com/about-us"]
+
+
+@pytest.mark.asyncio
+async def test_matches_turkish_and_encoded_paths() -> None:
+    main = _rich(
+        "https://example.com",
+        "içerik " * 30,
+        links=(
+            "https://example.com/hakk%C4%B1m%C4%B1zda",
+            "https://example.com/İletişim",
+        ),
+    )
+
+    visited = await _visited_subpages(main)
+
+    assert visited == [
+        "https://example.com/hakk%C4%B1m%C4%B1zda",
+        "https://example.com/İletişim",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_one_page_per_keyword_group_before_extras() -> None:
+    """Tek bir tema (ör. /about/*) tüm kotayı yemez; önce farklı temalar gelir."""
+    main = _rich(
+        "https://example.com",
+        "içerik " * 30,
+        links=(
+            "https://example.com/about",
+            "https://example.com/about/history",
+            "https://example.com/about/offices",
+            "https://example.com/careers",
+        ),
+    )
+
+    visited = await _visited_subpages(main, max_subpages=3)
+
+    assert visited[:2] == ["https://example.com/about", "https://example.com/careers"]
+    assert visited[2] == "https://example.com/about/history"
+
+
+@pytest.mark.asyncio
+async def test_skips_non_page_links_and_entry_url() -> None:
+    main = _rich(
+        "https://example.com",
+        "içerik " * 30,
+        links=(
+            "https://example.com/",
+            "https://example.com/docs/about-us.pdf",
+            "https://example.com/team",
+        ),
+    )
+
+    visited = await _visited_subpages(main)
+
+    assert visited == ["https://example.com/team"]
+
+
+@pytest.mark.asyncio
+async def test_falls_back_to_static_paths_when_no_link_matches() -> None:
+    """Sayfada uygun bağlantı yoksa (ör. JS menü) sabit liste yedeğe girer."""
+    main = _rich(
+        "https://example.com",
+        "içerik " * 30,
+        links=("https://example.com/blog", "https://linkedin.com/company/example"),
+    )
+
+    visited = await _visited_subpages(main, max_subpages=2)
+
+    assert visited == ["https://example.com/about", "https://example.com/about-us"]

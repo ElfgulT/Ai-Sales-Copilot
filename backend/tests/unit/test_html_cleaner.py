@@ -123,3 +123,25 @@ def test_strips_control_characters() -> None:
     assert "\x00" not in doc.text
     assert "�" not in doc.text
     assert "merhaba" in doc.text
+
+
+def test_collects_links_including_navigation() -> None:
+    html = """
+    <html><body>
+      <nav><a href="/hakkimizda">Hakkımızda</a><a href="/hizmetler">Hizmetler</a></nav>
+      <main><a href="https://example.com/blog">Blog</a><a href="/hakkimizda">Tekrar</a></main>
+      <footer><a href="mailto:info@example.com">Yaz</a></footer>
+    </body></html>
+    """
+    # Gezinme bağlantıları gürültü temizliğinde silinse de toplanmış olmalı;
+    # tekrar edenler tekilleşir, ham href sırası korunur.
+    assert clean_html(html).links == (
+        "/hakkimizda",
+        "/hizmetler",
+        "https://example.com/blog",
+        "mailto:info@example.com",
+    )
+
+
+def test_links_empty_when_no_anchors() -> None:
+    assert clean_html("<html><body><p>metin</p></body></html>").links == ()

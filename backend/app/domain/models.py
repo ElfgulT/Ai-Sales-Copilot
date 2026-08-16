@@ -85,6 +85,9 @@ class ScrapedContent:
     fetched_at: datetime
     # Akıllı öncelikle bulunan şirket adı adayı (JSON-LD/og/title/h1). Yoksa None.
     detected_name: str | None = None
+    # Sayfadaki <a href> bağlantılarının mutlak, tekilleştirilmiş hali. Çok
+    # sayfalı tarayıcı alt sayfa adaylarını tahmin etmek yerine buradan seçer.
+    links: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
