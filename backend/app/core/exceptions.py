@@ -61,6 +61,20 @@ class SiteBlockedError(ScrapeError):
     )
 
 
+class PageNotFoundError(ScrapeError):
+    """Sayfa yok (HTTP 404/410).
+
+    Kendi sınıfı olmasının sebebi: 404, sunucunun KESİN cevabıdır — "belki
+    JavaScript ile yüklenir" durumu değildir. `HybridScraper` bu hatada dinamik
+    yedeğe DÜŞMEZ; düşerse Playwright sitenin 404 sayfasını başarıyla render
+    eder ve hata sayfasının metni şirket içeriğiymiş gibi analize karışır.
+    """
+
+    code = "page_not_found"
+    status_code = 404
+    default_message = "Sayfa bulunamadı. Adres doğru mu?"
+
+
 class ScrapeTimeoutError(ScrapeError):
     """Site zamanında yanıt vermedi."""
 

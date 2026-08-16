@@ -31,6 +31,7 @@ import httpx
 from app.core.exceptions import (
     ConnectionFailedError,
     DnsError,
+    PageNotFoundError,
     ScrapeError,
     ScrapeTimeoutError,
     SiteBlockedError,
@@ -135,8 +136,8 @@ class BeautifulSoupScraper(WebScraper):
         status = exc.response.status_code
         if status in _BLOCKING_STATUSES:
             return SiteBlockedError()
-        if status == 404:
-            return ScrapeError("Sayfa bulunamadı. Adres doğru mu?")
+        if status in (404, 410):
+            return PageNotFoundError()
         if status >= 500:
             return ScrapeError(
                 "Web sitesinde geçici bir sorun var. Lütfen daha sonra tekrar deneyin."

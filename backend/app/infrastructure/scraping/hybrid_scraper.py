@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from app.core.exceptions import ScrapeError
+from app.core.exceptions import PageNotFoundError, ScrapeError
 from app.domain.interfaces import WebScraper
 from app.domain.models import ScrapedContent
 
@@ -34,6 +34,15 @@ class HybridScraper(WebScraper):
     async def scrape(self, url: str) -> ScrapedContent:
         try:
             static_content = await self._static.scrape(url)
+        except PageNotFoundError:
+            # 404 sunucunun KESİN cevabıdır; "belki JS ile yüklenir" durumu değil.
+            # Dinamiğe düşülürse Playwright sitenin 404 sayfasını başarıyla render
+            # eder ve o hata sayfasının metni gerçek içerik sanılır. Gerçek vaka:
+            # python.org analizinde /about-us, /who-we-are ve /services 404 döndü,
+            # üçü de dinamik yolla çekilip (115'er kelime) analiz metnine karıştı;
+            # model de haklı olarak "sitede 404 hataları var" diye rapor etti.
+            logger.info("Sayfa yok (404), dinamik yedek denenmiyor: %s", url)
+            raise
         except ScrapeError as static_exc:
             logger.info(
                 "Statik scrape hata verdi (%s), dinamik yedeğe geçiliyor: %s",
