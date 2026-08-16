@@ -35,6 +35,20 @@ _BANNED_PHRASES = (
     "Size özel bir fırsat",
 )
 
+# Hem e-posta hem pitch prompt'una eklenen ortak "uydurma" yasağı.
+#
+# Gerçek vaka: pitch çıktısında "manuel araştırma yükünü %80 azaltabilirsiniz"
+# gibi hiçbir yerden gelmeyen bir istatistik üretilmişti. Satış metninde
+# uydurulmuş bir yüzde, ürünün "klişesiz ve dürüst iletişim" iddiasını doğrudan
+# çürütüyor — o yüzden yasak prompt seviyesinde ve iki metin türü için de aynı.
+_NO_INVENTED_FACTS_RULES = (
+    "- Sayı, yüzde, oran, süre veya para tutarı UYDURMA. Yalnızca sana verilen "
+    "lead bilgilerinde birebir geçen sayıları kullanabilirsin. Etki iddiası "
+    "gerekiyorsa niteliksel anlat ('zaman kazandırır'), sayı verme.\n"
+    "- Sana verilmeyen hiçbir bilgiyi şirket hakkında biliyormuş gibi yazma "
+    "(müşteri sayısı, ciro, kullandıkları araçlar, yaşadıkları sorunlar).\n"
+)
+
 # Few-shot: tonu sabitleyen iyi bir örnek (jenerik bir şirket için).
 _EMAIL_EXAMPLE = (
     "Konu: Destek ekibiniz büyümeye yetişiyor mu?\n\n"
@@ -93,6 +107,7 @@ class LLMOutreachWriter(OutreachWriter):
             "- 110 kelimeyi geçme. Kısa paragraflar kullan.\n"
             "- Şirkete özgü TEK somut detaya/acı noktasına değin (genel laf etme).\n"
             "- Samimi ama profesyonel ol; satışçı/abartılı dilden kaçın.\n"
+            f"{_NO_INVENTED_FACTS_RULES}"
             "- TEK yumuşak çağrı (CTA): kısa bir görüşme öner.\n"
             f"- İmzayı '{self._seller.rep_name}' olarak at.\n"
             "- Türkçe yaz. 'Konu:' satırıyla başla.\n"
@@ -117,6 +132,7 @@ class LLMOutreachWriter(OutreachWriter):
             "- Her madde tek cümle, somut ve bu şirkete özgü olsun.\n"
             "- Acı noktalarını bizim çözümümüze bağla.\n"
             "- Klişe ve abartıdan kaçın; doğal, güvenli bir ton kullan.\n"
+            f"{_NO_INVENTED_FACTS_RULES}"
             "- Türkçe yaz. Maddeleri '- ' ile listele.\n\n"
             "Sadece konuşma noktalarını döndür."
         )

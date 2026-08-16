@@ -8,6 +8,22 @@ Prompt mühendisliği ilkeleri:
 - Türkçe, doğal ve spesifik çıktı iste.
 - "Yalnızca verilen içeriğe dayan, uydurma" (halüsinasyonu azalt).
 - Bilinmeyen alanlar için null/boş bırak.
+- Dayanak yoksa acı noktası ÜRETME; boş liste geçerli bir cevaptır.
+
+Not (gerçek vaka): python.org analizinde "sitenin About Us / Services
+sayfalarında 404 hataları var" ve "sayfalar yedek modda görüntüleniyor"
+şeklinde iki acı noktası üretildi. Model bunları UYDURMADI — ikisinin de
+metinde karşılığı vardı:
+- 404 metni, `MultiPageCrawler`'ın var olmayan alt sayfaları denemesinden ve
+  `HybridScraper`'ın 404'te dinamik yedeğe düşüp hata sayfasını "başarıyla"
+  çekmesinden geliyordu. Bu bir scraper hatasıydı ve orada düzeltildi
+  (bkz. `PageNotFoundError`); artık hata sayfaları analize hiç girmiyor.
+- "Yedek mod" ifadesi ise python.org ana sayfasındaki JavaScript uyarısıydı:
+  metinde gerçekten var, ama şirkete dair bir bulgu DEĞİL.
+
+Buradaki kurallar ikinci sınıfı hedefler (teknik sayfa kalıntılarını bulgu
+saymamak) ve ilki için ikinci savunma hattıdır: model, kendisine verilen
+metnin ne kadarının gerçek şirket içeriği olduğunu bilemez.
 """
 
 from __future__ import annotations
@@ -38,8 +54,10 @@ _SCHEMA: dict = {
             "type": "array",
             "items": {"type": "string"},
             "description": (
-                "Şirketin muhtemel 2-4 acı noktası (Türkçe, spesifik). "
-                "Örn: 'Hızlı büyüyorlar ama destek ekibi küçük görünüyor.'"
+                "Sayfa metninde AÇIK dayanağı olan en fazla 3 acı noktası "
+                "(Türkçe, spesifik). Dayanak yoksa BOŞ liste döndür; sırf "
+                "doldurmak için tahmin üretme. Örn: 'Kariyer sayfasında 4 "
+                "mühendis ilanı var ama destek tarafı için ilan görünmüyor.'"
             ),
         },
         "signals": {
@@ -85,9 +103,21 @@ _SYSTEM_PROMPT = (
     "Sen deneyimli bir B2B satış araştırma asistanısın. Sana bir şirketin web "
     "sitesinden çekilmiş metin verilir. Görevin: satış temsilcisinin bu şirketi "
     "hızlıca anlamasını sağlayacak özet, olası acı noktaları ve yapılandırılmış "
-    "sinyaller çıkarmak. KURALLAR: Yalnızca verilen içeriğe dayan, bilgi "
-    "uydurma. Emin olmadığın alanları boş/null bırak. Tüm metinsel çıktılar "
-    "Türkçe ve doğal olsun."
+    "sinyaller çıkarmak.\n\n"
+    "KURALLAR:\n"
+    "- Yalnızca verilen içeriğe dayan. Sayfada geçmeyen hiçbir olguyu ileri "
+    "sürme.\n"
+    "- Şirketin web sitesinin bozuk olduğu yönünde iddia ÜRETME (404 hatası, "
+    "kırık bağlantı, çalışmayan sayfa, eksik bölüm vb.). Sana yalnızca sayfanın "
+    "metni verilir; hangi adreslerin çalıştığını göremezsin.\n"
+    "- Çerez bildirimi, JavaScript uyarısı, gezinme menüsü, tarayıcı uyarısı "
+    "gibi teknik sayfa kalıntılarını şirkete dair bir bulgu sayma.\n"
+    "- Sayı, yüzde veya oran uydurma; yalnızca metinde birebir geçen sayıları "
+    "kullan.\n"
+    "- Emin olmadığın alanları boş/null bırak. Bir acı noktası için sayfada "
+    "açık dayanak yoksa listeyi boş bırak — boş liste, uydurulmuş bir "
+    "maddeden iyidir.\n"
+    "- Tüm metinsel çıktılar Türkçe ve doğal olsun."
 )
 
 

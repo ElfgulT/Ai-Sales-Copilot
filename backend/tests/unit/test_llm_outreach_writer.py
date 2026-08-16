@@ -55,6 +55,27 @@ async def test_email_prompt_contains_lead_context() -> None:
 
 
 @pytest.mark.asyncio
+async def test_both_prompts_forbid_invented_numbers() -> None:
+    """Pitch çıktısında uydurulmuş '%80' istatistiği görülmüştü (bkz. modül notu).
+
+    Yasak iki metin türü için de geçerli olmalı; biri güncellenip diğeri
+    unutulursa bu test kırılır.
+    """
+    provider = FakeLLMProvider()
+    writer = _writer(provider)
+
+    await writer.write_cold_email("Acme", _INSIGHTS)
+    email_system = provider.last_text_kwargs["system"]
+
+    await writer.write_pitch("Acme", _INSIGHTS)
+    pitch_system = provider.last_text_kwargs["system"]
+
+    for system in (email_system, pitch_system):
+        assert "UYDURMA" in system
+        assert "yüzde" in system
+
+
+@pytest.mark.asyncio
 async def test_write_pitch_uses_pitch_token_budget() -> None:
     provider = FakeLLMProvider()
     writer = LLMOutreachWriter(provider, _SELLER, pitch_max_tokens=321)

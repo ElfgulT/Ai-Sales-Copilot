@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.application.company_insight_analyzer import LLMCompanyInsightAnalyzer
+from app.application.company_insight_analyzer import _SCHEMA, LLMCompanyInsightAnalyzer
 from tests.factories import FakeLLMProvider, make_scraped_content
 
 
@@ -46,6 +46,31 @@ async def test_filters_non_string_list_items() -> None:
     insights = await analyzer.analyze(make_scraped_content())
 
     assert insights.pain_points == ("geçerli", "boşluklu")
+
+
+@pytest.mark.asyncio
+async def test_system_prompt_blocks_technical_page_noise() -> None:
+    """Teknik sayfa kalıntıları acı noktası sayılmamalı.
+
+    python.org ana sayfasındaki JavaScript uyarısı "sayfalar yedek modda
+    görüntüleniyor" diye bir acı noktasına dönüşmüştü. Kurallar prompt'tan
+    çıkarsa bu gerileme geri gelir.
+    """
+    provider = FakeLLMProvider()
+    await LLMCompanyInsightAnalyzer(provider).analyze(make_scraped_content())
+
+    system = provider.last_kwargs["system"]
+    assert "404" in system  # site bozukluğu iddiası yasağı
+    assert "JavaScript uyarısı" in system  # teknik kalıntıları bulgu sayma
+    assert "uydurma" in system.lower()  # sayı/yüzde uydurma yasağı
+
+
+def test_pain_point_schema_allows_empty_list() -> None:
+    """Şema 'en az N acı noktası' dayatmamalı: dayanak yoksa boş liste doğru cevap."""
+    description = _SCHEMA["properties"]["pain_points"]["description"]
+    assert "BOŞ liste" in description
+    assert "en fazla 3" in description
+    assert "2-4" not in description  # eski, doldurmaya zorlayan ifade
 
 
 @pytest.mark.asyncio
